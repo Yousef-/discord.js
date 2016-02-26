@@ -1,6 +1,35 @@
 "use strict";
 /* global Buffer */
 
+/**
+ * Resolves supplied data type to a Channel. If a String, it should be a Channel ID.
+ * @typedef {(Channel|Server|Message|User|String)} ChannelResolvable
+*/
+/**
+ * Resolves supplied data type to a TextChannel or PMChannel. If a String, it should be a Channel ID.
+ * @typedef {(TextChannel|PMChannel|Server|Message|User|String)} TextChannelResolvable
+*/
+/**
+ * If given an array, turns it into a newline-separated string.
+ * @typedef {(String|Array)} StringResolvable
+*/
+/**
+ * Resolves supplied data type to a Message. If a channel, it is the latest message from that channel.
+ * @typedef {(Message|TextChannel|PMChannel)} MessageResolvable
+*/
+/**
+ * Resolves supplied data type to a Server. If a String, it should be the server's ID.
+ * @typedef {(Server|ServerChannel|Message|String)} ServerResolvable
+ */
+/**
+ * Resolves supplied data type to something that can be attached to a message. If a String, it can be an URL or a path to a local file.
+ * @typedef {(String|ReadableStream|Buffer)} FileResolvable
+ */
+/**
+ * Resolves supplied data type to an invite ID. If a String, it should be an ID or a direct URL to the invite.
+ * @typedef {(Invite|String)} InviteIDResolvable
+ */
+
 import fs from "fs";
 import request from "superagent";
 
@@ -54,7 +83,7 @@ export default class Resolver {
 		}
 		if (resource instanceof Message) {
 			if (resource.channel instanceof TextChannel) {
-				return resource.server;
+				return resource.channel.server;
 			}
 		}
 		return null;
@@ -178,10 +207,10 @@ export default class Resolver {
 			return Promise.resolve(resource);
 		}
 		if (resource instanceof Server) {
-			return Promise.resolve(resource.channels.get("id", resource.id));
+			return Promise.resolve(resource.defaultChannel);
 		}
 		if (resource instanceof String || typeof resource === "string") {
-			return Promise.resolve(this.internal.channels.get("id", resource));
+			return Promise.resolve(this.internal.channels.get("id", resource) || this.internal.private_channels.get("id", resource));
 		}
 		if (resource instanceof User) {
 			// see if a PM exists
