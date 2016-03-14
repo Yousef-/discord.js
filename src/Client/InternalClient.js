@@ -65,7 +65,7 @@ export default class InternalClient {
 		return new Promise((resolve, reject) => {
 			ret.end((error, data) => {
 				if (error) {
-					if (!this.client.options.rate_limit_as_error &&
+					if (!this.client.options.rateLimitAsError &&
 						error.response &&
 						error.response.error &&
 						error.response.error.status
@@ -319,6 +319,24 @@ export default class InternalClient {
 			return Promise.reject(new Error("server did not resolve"));
 		}
 
+		return this.apiRequest("del", Endpoints.ME_SERVER(server.id), true)
+		.then(() => {
+			// remove channels of server then the server
+			for (var chan of server.channels) {
+				this.channels.remove(chan);
+			}
+			// remove server
+			this.servers.remove(server);
+		});
+	}
+
+	//def deleteServer
+	deleteServer(srv) {
+		var server = this.resolver.resolveServer(srv);
+		if (!server) {
+			return Promise.reject(new Error("server did not resolve"));
+		}
+
 		return this.apiRequest("del", Endpoints.SERVER(server.id), true)
 		.then(() => {
 			// remove channels of server then the server
@@ -415,7 +433,7 @@ export default class InternalClient {
 			return Promise.reject(new Error("Unable to resolve resUser to a User"));
 		}
 				// start the PM
-		return this.apiRequest("post", Endpoints.USER_CHANNELS(user.id), true, {
+		return this.apiRequest("post", Endpoints.USER_CHANNELS(this.user.id), true, {
 			recipient_id: user.id
 		})
 		.then(res => {
@@ -679,7 +697,11 @@ export default class InternalClient {
 
 	// def deleteRole
 	deleteRole(role) {
-		return this.apiRequest("del", `${Endpoints.SERVER_ROLES(role.server.id)}/${role.id}`, true)
+		if (role.server.id === role.id) {
+			return Promise.reject(new Error("Stop trying to delete the @everyone role. It is futile"));
+		} else {
+			return this.apiRequest("del", `${Endpoints.SERVER_ROLES(role.server.id)}/${role.id}`, true);
+		}
 	}
 
 	//def addMemberToRole
@@ -930,7 +952,7 @@ export default class InternalClient {
 
 		this.sendWS(packet);
 
-		this.user.status = this.idleStatus;
+		this.user.status = this.idleStatus ? "idle" : "online";
 		this.user.game = this.game;
 
 		return Promise.resolve();
@@ -1100,7 +1122,7 @@ export default class InternalClient {
 					token: self.token,
 					v: 3,
 					compress: self.client.options.compress,
-					large_threshold : self.client.options.large_threshold,
+					large_threshold : self.client.options.largeThreshold,
 					properties: {
 						"$os": "discord.js",
 						"$browser": "discord.js",
@@ -1243,12 +1265,19 @@ export default class InternalClient {
 					var server = self.servers.get("id", data.id);
 					if (server) {
 						if (!data.unavailable) {
+							client.emit("serverDeleted", server);
+
 							for (var channel of server.channels) {
 								self.channels.remove(channel);
 							}
 
 							self.servers.remove(server);
-							client.emit("serverDeleted", server);
+
+							for (var user of server.members) {
+								if (!self.servers.find((s) => !!s.members.get("id", user.id))) {
+									self.users.remove(user);
+								}
+							}
 						} else {
 							client.emit("warn", "server was unavailable, could not update");
 						}
@@ -1402,11 +1431,13 @@ export default class InternalClient {
 							joinedAt: Date.parse(data.joined_at)
 						};
 
+						server.memberCount++;
+
 						client.emit(
 							"serverNewMember",
 							server,
 							server.members.add(self.users.add(new User(data.user, client)))
-							);
+						);
 
 					} else {
 						client.emit("warn", "server member added but server doesn't exist in cache");
@@ -1417,9 +1448,13 @@ export default class InternalClient {
 					if (server) {
 						var user = self.users.get("id", data.user.id);
 						if (user) {
+							client.emit("serverMemberRemoved", server, user);
 							server.memberMap[data.user.id] = null;
 							server.members.remove(user);
-							client.emit("serverMemberRemoved", server, user);
+							server.memberCount--;
+							if (!self.servers.find((s) => !!s.members.get("id", user.id))) {
+								self.users.remove(user);
+							}
 						} else {
 							client.emit("warn", "server member removed but user doesn't exist in cache");
 						}
@@ -1544,7 +1579,6 @@ export default class InternalClient {
 					}
 					break;
 				case PacketType.VOICE_STATE_UPDATE:
-
 					var user = self.users.get("id", data.user_id);
 					var server = self.servers.get("id", data.guild_id);
 
@@ -1577,6 +1611,14 @@ export default class InternalClient {
 						var testtime = new Date().getTime();
 
 						for (var user of data.members) {
+							server.memberMap[user.user.id] = {
+								roles: user.roles.map(pid => server.roles.get("id", pid)),
+								mute: user.mute,
+								self_mute: false,
+								deaf: user.deaf,
+								self_deaf: false,
+								joinedAt: Date.parse(user.joined_at)
+							};
 							server.members.add(self.users.add(new User(user.user, client)));
 						}
 

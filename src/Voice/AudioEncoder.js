@@ -60,20 +60,31 @@ export default class AudioEncoder {
 
 	encodeStream(stream, options) {
 		return new Promise((resolve, reject) => {
-			this.volume = new VolumeTransformer(options.volume || 1);
+			this.volume = new VolumeTransformer(options.volume);
 
 			var enc = cpoc.spawn(this.getCommand(), [
-				'-loglevel', '0',
+				'-hide_banner',
 				'-i', '-',
 				'-f', 's16le',
 				'-ar', '48000',
 				'-ss', (options.seek || 0),
 				'-ac', 2,
 				'pipe:1'
-			], {stdio: ['pipe', 'pipe', 'ignore']});
+			]);
 
 			stream.pipe(enc.stdin);
+
+			var ffmpegErrors = "";
+
 			enc.stdout.pipe(this.volume);
+			enc.stderr.on("data", (data) => {
+				ffmpegErrors += "\n" + new Buffer(data).toString().trim();
+			});
+			enc.once("exit", (code, signal) => {
+				if (code) {
+					reject(new Error("FFMPEG: " + ffmpegErrors));
+				}
+			})
 
 			this.volume.once("readable", () => {
 				resolve({
@@ -96,19 +107,29 @@ export default class AudioEncoder {
 
 	encodeFile(file, options) {
 		return new Promise((resolve, reject) => {
-			this.volume = new VolumeTransformer(options.volume || 1);
+			this.volume = new VolumeTransformer(options.volume);
 
 			var enc = cpoc.spawn(this.getCommand(), [
-				'-loglevel', '0',
+				'-hide_banner',
 				'-i', file,
 				'-f', 's16le',
 				'-ar', '48000',
 				'-ss', (options.seek || 0),
 				'-ac', 2,
 				'pipe:1'
-			], {stdio: ['pipe', 'pipe', 'ignore']});
+			]);
+
+			var ffmpegErrors = "";
 
 			enc.stdout.pipe(this.volume);
+			enc.stderr.on("data", (data) => {
+				ffmpegErrors += "\n" + new Buffer(data).toString().trim();
+			});
+			enc.once("exit", (code, signal) => {
+				if (code) {
+					reject(new Error("FFMPEG: " + ffmpegErrors));
+				}
+			})
 
 			this.volume.once("readable", () => {
 				resolve({
@@ -134,15 +155,25 @@ export default class AudioEncoder {
 
 			// add options discord.js needs
 			var options = ffmpegOptions.concat([
-				'-loglevel', '0',
+				'-hide_banner',
 				'-f', 's16le',
 				'-ar', '48000',
 				'-ac', 2,
 				'pipe:1'
 			]);
-			var enc = cpoc.spawn(this.getCommand(), options, {stdio: ['pipe', 'pipe', 'ignore']});
+			var enc = cpoc.spawn(this.getCommand(), options);
+
+			var ffmpegErrors = "";
 
 			enc.stdout.pipe(this.volume);
+			enc.stderr.on("data", (data) => {
+				ffmpegErrors += "\n" + new Buffer(data).toString().trim();
+			});
+			enc.once("exit", (code, signal) => {
+				if (code) {
+					reject(new Error("FFMPEG: " + ffmpegErrors));
+				}
+			})
 
 			this.volume.once("readable", () => {
 				resolve({

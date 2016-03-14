@@ -43,6 +43,7 @@ import Role from "../../Structures/Role";
 import Server from "../../Structures/Server";
 import Message from "../../Structures/Message";
 import Invite from "../../Structures/Invite";
+import VoiceConnection from "../../Voice/VoiceConnection";
 
 export default class Resolver {
 	constructor(internal) {
@@ -108,14 +109,20 @@ export default class Resolver {
 		if (typeof resource === "string" || resource instanceof String) {
 			if (/^https?:\/\//.test(resource)) {
 				return new Promise((resolve, reject) => {
-					request.get(resource).end((err, res) => {
+					request.get(resource).buffer().parse((res, cb) => {
+						res.setEncoding("binary");
+						res.data = "";
+						res.on("data", (chunk) => {
+							res.data += chunk;
+						});
+						res.on("end", () => {
+							cb(null, new Buffer(res.data, "binary"));
+						});
+					}).end((err, res) => {
 						if (err) {
-							reject(err);
-						} else if (res.text === undefined) {
-							resolve(res.body);
-						} else {
-							resolve(new Buffer(res.text));
+							return reject(err);
 						}
+						return resolve(res.body);
 					});
 				});
 			} else {
@@ -145,12 +152,11 @@ export default class Resolver {
 		// accepts Array, Channel, Server, User, Message, String and anything
 		// toString()-able
 
-		var final = resource;
 		if (resource instanceof Array) {
-			final = resource.join("\n");
+			resource = resource.join("\n");
 		}
 
-		return final.toString();
+		return resource.toString();
 	}
 
 	resolveUser(resource) {
@@ -197,7 +203,7 @@ export default class Resolver {
 
 	resolveChannel(resource) {
 		/*
-			accepts a Message, Channel, Server, String ID, User
+			accepts a Message, Channel, VoiceConnection, Server, String ID, User
 		*/
 
 		if (resource instanceof Message) {
@@ -206,26 +212,28 @@ export default class Resolver {
 		if (resource instanceof Channel) {
 			return Promise.resolve(resource);
 		}
+		if (resource instanceof VoiceConnection) {
+			return Promise.resolve(resource.voiceChannel);
+		}
 		if (resource instanceof Server) {
 			return Promise.resolve(resource.defaultChannel);
 		}
 		if (resource instanceof String || typeof resource === "string") {
-			return Promise.resolve(this.internal.channels.get("id", resource) || this.internal.private_channels.get("id", resource));
+			var user = this.internal.users.get("id", resource);
+			if (user) {
+				resource = user;
+			} else {
+				return Promise.resolve(this.internal.channels.get("id", resource) || this.internal.private_channels.get("id", resource));
+			}
 		}
 		if (resource instanceof User) {
 			// see if a PM exists
-			var chatFound = false;
 			for (var pmchat of this.internal.private_channels) {
 				if (pmchat.recipient.equals(resource)) {
-					chatFound = pmchat;
-					break;
+					return Promise.resolve(pmchat);
 				}
 			}
 
-			if (chatFound) {
-				// a PM already exists!
-				return Promise.resolve(chatFound);
-			}
 			// PM does not exist :\
 			return this.internal.startPM(resource);
 		}
