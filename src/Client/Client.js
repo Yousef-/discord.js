@@ -208,6 +208,34 @@ export default class Client extends EventEmitter {
 	}
 
 	/**
+	 * Log the client in using a bot account token. Bot accounts are a very recent addition to Discord that will allow some extra
+	 * functionality in the future, such as being connected to multiple voice channels or higher rate limits. Bot accounts differ
+	 * from normal accounts in that they only have a token, and no email or password at all.
+	 +
+	 * If you don't know how to create a bot account, and don't know where to look, you should probably wait until the feature is
+	 * fully released, because it may be dangerous.
+	 * @param {string} token The bot account token returned by Discord.
+	 * @param {function(err: Error, token: string)} [callback] callback callback to the method
+	 * @returns {Promise<string, Error>} Resolves with the token if the login was successful, otherwise it rejects with an error.
+	 * @example
+	 * // log the client in - callback
+	 * client.loginAsBot("token123", function(error, token){
+	 *    if(!error){
+	 *       console.log(token);
+	 *    }
+	 * });
+	 * @example
+	 * // log the client in - promise
+	 * client.loginAsBot("token123")
+	 *     .then(token => console.log(token))
+	 *     .catch(err => console.log(err));
+	 */
+	loginAsBot(token, callback = (/*err, token*/) => {}) {
+		return this.internal.loginWithToken('Bot ' + token, null, null)
+			.then(dataCallback(callback), errorCallback(callback));
+	}
+
+	/**
 	 * Log the client in using an email and password.
 	 * @param {string} email Email of the Discord Account.
 	 * @param {string} password Password of the Discord Account.

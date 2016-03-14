@@ -356,6 +356,10 @@ export default class InternalClient {
 		this.email = email;
 		this.password = password;
 
+		if (token.startsWith("Bot ")) {
+			this.botAccount = true;
+		}
+
 		return this.getGateway()
 		.then(url => {
 			this.createWS(url);
