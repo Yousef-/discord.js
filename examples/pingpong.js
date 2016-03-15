@@ -30,7 +30,7 @@ var bot = new Discord.Client();
 //when the bot is ready
 bot.on("ready", function () {
     console.log("starting at "+ time );
-    console.log("Ready to begin! Serving in " + bot.channels.length + " channels");
+    console.log("Ready to begin! Serving in " + bot.channels.length + " channels, " + bot.servers.length + " servers");
 });
 
 //when the bot disconnects
@@ -78,7 +78,7 @@ bot.on("message", function (msg) {
             //testing shit
             {
                 if (message.includes("!fuck") == true) {
-                    bot.sendMessage(msg.channel,"!fuck");
+                    bot.sendMessage(msg.channel,"~fuck");
                     wait(300);
                 }
 
@@ -163,9 +163,40 @@ bot.on("message", function (msg) {
 
             //fun shit (pics)
             {
-                //"C:/Users/Yousef/Google Drive/botfiles/!dio.jpg"
+                
                 if (message.includes("!dio") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/dio.jpg", "dio.png");
+                }
+                if (message.includes("!familiarfaces") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!familiarfaces.jpg", "!familiarfaces.png");
+                }
+                if (message.includes("!asahi") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!asahi.jpg", "!asahi.png");
+                }
+                if (message.includes("!awoof") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!awoof.jpg", "!awoof.png");
+                }
+                if (message.includes("!lucifer") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!lucifer.png", "!lucifer.png");
+                }
+                if (message.includes("!merkabah") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!merkabah.png", "!merkabah.png");
+                }
+                //TODO: add more !stop pics
+                if (message.includes("!stop") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!stop.png", "!stop.png");
+                }
+                if (message.includes("!elienokiseki") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!elienokiseki.jpg", "elienokiseki.png");
+                }
+                if (message.includes("!camplaslow") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/camplaslow.png", "camplaslow.png");
+                }
+                if (message.includes("!trailsintheshill") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!trailsintheshill.png", "trailsintheshill.png");
+                }
+                if (message.includes("!short") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!short.jpg", "short.png");
                 }
                 if (message.includes("!bruh") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/bruh.png", "bruh.png");

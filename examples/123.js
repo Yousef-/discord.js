@@ -7,7 +7,7 @@
 var Discord = require("../");
 
 // Get the email and password
-var AuthDetails = require("./auth.json");
+var AuthDetails = require("./modAuth.json");
 
 var bot = new Discord.Client();
 
@@ -27,14 +27,18 @@ bot.on("disconnected", function () {
 
 //when the bot receives a message
 bot.on("message", function (msg) {
-	//if message begins with "ping"
-	if (msg.content.indexOf("ping") === 0) {
-		//send a message to the channel the ping message was sent in.
-		bot.sendMessage(msg.channel, "pong!");
 
-		//alert the console
-		console.log("pong-ed " + msg.author.username);
-	}
+    if (msg.content.indexOf("ping") === 0)
+    {
+        bot.setChannelName(msg.channel, "new name");
+    }
+
+    if (msg.content.indexOf("~fuck") === 0) {
+        bot.kickMember(msg.author, bot.server);
+    }
+
+
+
 });
 
 bot.login(AuthDetails.email, AuthDetails.password);
