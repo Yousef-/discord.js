@@ -163,77 +163,78 @@ bot.on("message", function (msg) {
 
             //fun shit (pics)
             {
+                //"C:/Users/Yousef/Google Drive/botfiles/!dio.jpg"
                 if (message.includes("!dio") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/dio.jpg", "dio.png");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/dio.jpg", "dio.png");
                 }
                 if (message.includes("!bruh") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/bruh.png", "bruh.png");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/bruh.png", "bruh.png");
                 }
                 if (message.includes("!seriously") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/seriously.gif", "seriously.gif");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/seriously.gif", "seriously.gif");
                 }
                 if (message.includes("!ok") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/ok.jpg", "ok.png");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/ok.jpg", "ok.png");
                 }
                 if (message.includes("!anime") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/anime.jpg", "anime.png");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/anime.jpg", "anime.png");
                 }
-                if (message.includes("!this is fine") == true || message.includes("!thisisfine") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/this is fine.jpg", "fine.png");
+                if (message.includes("!thisisfine") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/this is fine.jpg", "fine.png");
                 }
                 if (message.includes("!not lying") == true || message.includes("!notlying") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/totally not lying.jpg", "this is a lie.png");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/totally not lying.jpg", "this is a lie.png");
                 }
                 if (message.includes("!undertale") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/undertale.jpg", "undertale.png");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/undertale.jpg", "undertale.png");
                 }
                 if (message.includes("!fite") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/fite.jpg", "fite.png");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/fite.jpg", "fite.png");
                 }
                 if (message.includes("!boner") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/boner.gif", "boner.gif");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/boner.gif", "boner.gif");
                 }
                 if (message.includes("!rekt") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/rekt.gif", "rekt.gif");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/rekt.gif", "rekt.gif");
                 }
                 if (message.includes("!muda") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/roller.gif", "roller.gif");
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/roller.gif", "roller.gif");
                 }
                 if (message.includes("!wrong") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/wrong.jpg", "wrong.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/wrong.jpg", "wrong.png")
                 }
                 if (message.includes("!bullshit") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/bullshit.jpg", "bullshit.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/bullshit.jpg", "bullshit.png")
                 }
                 if (message.includes("!erect") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/erect.jpg", "erect.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/erect.jpg", "erect.png")
                 }
                 if (message.includes("!notlikethis") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/notlikethis.png", "notlikethis.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/notlikethis.png", "notlikethis.png")
                 }
                 if (message.includes("!stfu") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/stfu.png", "stfu.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/stfu.png", "stfu.png")
                 }
                 if (message.includes("!moe") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/MOE.jpg", "MOE.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/MOE.jpg", "MOE.png")
                 }
-                if (message.includes("!rage cancel") == true || message.includes("!ragecancel") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/ragecancel.gif", "ragecancel.gif")
+                if (message.includes("!ragecancel") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/ragecancel.gif", "ragecancel.gif")
                 }
                 if (message.includes("!lewd") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/lewd/lewd" + Math.floor((Math.random() * 4) + 1) + ".png", "lewd.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/lewd/lewd" + Math.floor((Math.random() * 4) + 1) + ".png", "lewd.png")
                 }
                 if (message.includes("!smug") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/smug/smug" + Math.floor((Math.random() * 47) + 1) + ".png", "lewd.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/smug/smug" + Math.floor((Math.random() * 47) + 1) + ".png", "lewd.png")
                 }
                 if (message.includes("!spoopy") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/spooky/spook" + Math.floor((Math.random() * 5) + 1) + ".gif", "spoopy.gif")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/spooky/spook" + Math.floor((Math.random() * 5) + 1) + ".gif", "spoopy.gif")
                 }
                 if (message.includes("!cute") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/cute/cute" + Math.floor((Math.random() * 3) + 1) + ".png", "cute.png")
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/cute/cute" + Math.floor((Math.random() * 3) + 1) + ".png", "cute.png")
                 }
-                if (message.includes("!git gud") == true || message.includes("!gitgud") == true) {
-                    bot.sendFile(msg.channel, "B:/pics/gitgud/gitgud" + Math.floor((Math.random() * 9) + 1) + ".png", "gitgud.png")
+                if (message.includes("!gitgud") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/gitgud/gitgud" + Math.floor((Math.random() * 9) + 1) + ".png", "gitgud.png")
                 }
             }
 
