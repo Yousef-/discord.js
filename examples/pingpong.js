@@ -27,6 +27,16 @@ var bot = new Discord.Client();
     }
 }
 
+
+//check in arrays
+{
+    function isInArray(value, array) {
+        return array.indexOf(value) > -1;
+    }
+}
+
+
+
 //when the bot is ready
 bot.on("ready", function () {
     console.log("starting at "+ time );
@@ -77,12 +87,77 @@ bot.on("message", function (msg) {
 
             //testing shit
             {
-                if (message.includes("!fuck") == true) {
-                    bot.sendMessage(msg.channel,"~fuck");
-                    wait(300);
+                if (message.includes("!test1") == true) {
+                    bot.sendMessage(msg.channel,"servers: " + bot.servers + ", channel: " + bot.servers[3].channels);
+                    bot.sendMessage(msg.channel, "bot.users: " + bot.user + " msg.channel: " + msg.channel); //this gives the bots user
+
+                    //wait(300);
+                }
+
+                if (message.includes("!test2") == true) {
+                    //wait(300);
+                }
+
+                if(message.includes("!test3") == true)
+                {
+                    var index = msg.content.indexOf("@)");
+                    bot.kickMember(msg.content.substring(index), bot.servers[3]);//
                 }
 
             }
+
+            //sever specific commands
+            for (var i = 0; i < bot.servers.length; i++)
+            {
+                //check server
+                if (isInArray(msg.channel, bot.servers[i].channels))
+                {
+                    
+                    //testing only
+                    if (bot.servers[i] == "testing")
+                    {
+                        if (message.includes("!test4") == true)
+                        {
+                            bot.sendMessage(msg.channel, "VoHiYo");
+                        }
+                    }
+
+                    //boku no video games only
+                    if (bot.servers[i] == "Boku no Video Games")
+                    {
+                        //test commands
+                        {
+                            if (message.includes("!test4") == true)
+                            {
+                                bot.sendMessage(msg.channel, "HeyGuys");
+                            }
+                        }
+                        //fun commands
+                        {
+                            if (message.includes("!cutie") == true)
+                            {
+                                bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!cutie.png", "!Cutie.png");
+                            }
+                        }
+
+                    }
+
+                    //boku no lewds only
+                    if (bot.servers[i] == "Boku no Lewds")
+                    {
+
+                    }
+
+                    //camp laslow only
+                    if (bot.servers[i] == "Camp Laslow")
+                    {
+
+                    }
+
+                }
+            }
+
+
 
             //dm shit
             {
@@ -126,6 +201,19 @@ bot.on("message", function (msg) {
                 if (message.includes("!sao") == true) {
                     bot.sendMessage(msg.channel, "http://www.hulu.com/sword-art-online");
                 }
+
+                if (message.includes("!nuclear") == true) {
+                    bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=gn7AKFy3h94");
+                }
+
+                if (message.includes("!shinyteeth") == true) {
+                    bot.sendMessage(msg.channel, "http://hestia.dance/");
+                }
+
+                if (message.includes("!lolidance") == true) {
+                    bot.sendMessage(msg.channel, "http://loli.dance/");
+                }
+
             }
 
             //twitch links
@@ -159,6 +247,7 @@ bot.on("message", function (msg) {
                     bot.sendMessage(msg.channel, "http://pastebin.com/79mjZSBV");
                 }
             }
+
             //TODO: add !rip
 
             //fun shit (pics)
@@ -166,6 +255,12 @@ bot.on("message", function (msg) {
                 
                 if (message.includes("!dio") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/dio.jpg", "dio.png");
+                }
+                if (message.includes("!ys") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!ys.jpg", "ys.png");
+                }
+                if (message.includes("!ora") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!ora.jpg", "ora.png");
                 }
                 if (message.includes("!familiarfaces") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!familiarfaces.jpg", "!familiarfaces.png");
@@ -179,6 +274,10 @@ bot.on("message", function (msg) {
                 if (message.includes("!lucifer") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!lucifer.png", "!lucifer.png");
                 }
+                if (message.includes("!discomfort") == true) {
+                    bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!discomfort.png", "!discomfort.png");
+                }
+                
                 if (message.includes("!merkabah") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!merkabah.png", "!merkabah.png");
                 }
@@ -213,7 +312,7 @@ bot.on("message", function (msg) {
                 if (message.includes("!thisisfine") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/this is fine.jpg", "fine.png");
                 }
-                if (message.includes("!not lying") == true || message.includes("!notlying") == true) {
+                if (message.includes("!not lying") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/totally not lying.jpg", "this is a lie.png");
                 }
                 if (message.includes("!undertale") == true) {

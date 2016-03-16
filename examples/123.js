@@ -27,10 +27,11 @@ bot.on("disconnected", function () {
 
 //when the bot receives a message
 bot.on("message", function (msg) {
+   
 
     if (msg.content.indexOf("ping") === 0)
     {
-        bot.setChannelName(msg.channel, "new name");
+        bot.setUsername("modbot");
     }
 
     if (msg.content.indexOf("~fuck") === 0) {
