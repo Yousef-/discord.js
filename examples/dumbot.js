@@ -1,7 +1,7 @@
-/*
-	this bot is a ping pong bot, and every time a message
-	beginning with "ping" is sent, it will reply with
-	"pong!".
+﻿/*
+	TODO: comment on the start of the code
+
+    TODO: remake the bot to be more OOP
 */
 
 var Discord = require("../");
@@ -39,6 +39,7 @@ var bot = new Discord.Client();
 
 //when the bot is ready
 bot.on("ready", function () {
+    bot.setPlayingGame(" all alone");
     console.log("starting at "+ time );
     console.log("Ready to begin! Serving in " + bot.channels.length + " channels, " + bot.servers.length + " servers");
 });
@@ -55,9 +56,10 @@ bot.on("disconnected", function () {
 
 //when the bot receives a message
 bot.on("message", function (msg) {
-    bot.setPlayingGame("your mom")
+    
+    //TODO: mod stuff
 
-   
+    //TODO: add !help and !info
 
     // commands
     {
@@ -70,9 +72,15 @@ bot.on("message", function (msg) {
 
         //bypass the filter
         {
+            //bot doesnt like @everyone
             if (msg.everyoneMentioned == true) {
                 //wait(4000);
                 bot.sendMessage(msg.author, "SwiftRage dont use @ Everyone again SwiftRage !!");
+            }
+
+            //bot respond to chimpbucket's daily "rawr"s
+            if (message.includes("rawr") == true) {
+                bot.sendMessage(msg.channel, "VoHiYo cumbucket, how are you?")
             }
         }
 
@@ -98,60 +106,117 @@ bot.on("message", function (msg) {
                     //wait(300);
                 }
 
-                if(message.includes("!test3") == true)
-                {
-                    var index = msg.content.indexOf("@)");
-                    bot.kickMember(msg.content.substring(index), bot.servers[3]);//
-                }
+                
 
+                
             }
 
             //sever specific commands
             for (var i = 0; i < bot.servers.length; i++)
             {
+                var serv = bot.servers[i];
+
                 //check server
-                if (isInArray(msg.channel, bot.servers[i].channels))
+                if (isInArray(msg.channel, serv.channels))
                 {
                     
                     //testing only
-                    if (bot.servers[i] == "testing")
+                    if (serv == "testing")
                     {
-                        if (message.includes("!test4") == true)
-                        {
-                            bot.sendMessage(msg.channel, "VoHiYo");
+                        
+                        //TODO: manage info
+                        if (message.includes("!info") == true) {
+                            var index = msg.content.indexOf("@");
+                            if (index > 5)
+                                bot.sendMessage(msg.channel, "<" + msg.content.substring(index) + " : " + serv.rolesOfUser("<" + msg.content.substring(index)));//
                         }
+                        
+
+                        //TODO: manage roles
+                        if (message.includes("!roles") == true) {
+                            bot.sendMessage(msg.channel, "the roles of this server are: " + serv.roles[0]);
+                        }
+                        //if (message.includes("!members") == true) {
+                        //    bot.sendMessage(msg.channel, "the number of members in this server: " + serv.members.length);
+                        //}
+
+
+                        if (message.includes("!test") == true)
+                        {
+                            bot.sendMessage(msg.channel, "VoHiYo " + serv);
+                        }
+
+                        //if (message.includes("!test5") == true) {
+                           // var usr = @159386718712102912;
+                            //var user_permissions = msg.channel.permissionsOf(usr);
+
+                            //var can_mention_everyone = user_permissions.hasPermission("mentionEveryone");
+                            
+                            //bot.sendMessage(msg.channel,);
+
+                                //bot.banMember("<" + msg.content.substring(index), serv);
+
+                            //kickMember(user, server, function (err) { console.log(err) })
+                            //kickMember(user, server, function(err){console.log(err)}).catch(console.log)
+
+                        //}
+
+
+                        if(message.includes("!love"))
+                        {
+                            bot.sendMessage(msg.channel, msg.author + " I love you <<33")
+                        }
+
                     }
 
                     //boku no video games only
-                    if (bot.servers[i] == "Boku no Video Games")
+                    if (serv == "Boku no Video Games")
                     {
-                        //test commands
+                        if (message.includes("!cutie") == true)
                         {
-                            if (message.includes("!test4") == true)
-                            {
-                                bot.sendMessage(msg.channel, "HeyGuys");
-                            }
+                            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!cutie.png", "!Cutie.png");
                         }
-                        //fun commands
+                        if(message.includes("rawr") == true)
                         {
-                            if (message.includes("!cutie") == true)
-                            {
-                                bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!cutie.png", "!Cutie.png");
-                            }
+                            bot.sendMessage(msg.channel, "VoHiYo cumbucket, how are you?")
                         }
-
+                        if (message.includes("!owner") == true) {
+                            bot.sendMessage(msg.channel, "the owner of this server is: " + serv.owner);
+                        }
+                        //if (message.includes("!callall") == true) {
+                        //    bot.sendMessage(msg.channel, serv.members);
+                        //}
+                        if (message.includes("!members") == true) {
+                            bot.sendMessage(msg.channel, "the number of members in this server: " + serv.members.length);
+                        }
                     }
 
                     //boku no lewds only
-                    if (bot.servers[i] == "Boku no Lewds")
+                    if (serv == "Boku no Lewds")
                     {
-
+                        if (message.includes("!owner") == true) {
+                            bot.sendMessage(msg.channel, "the owner of this server is: " + serv.owner);
+                        }
+                        //if (message.includes("!callall") == true) {
+                        //    bot.sendMessage(msg.channel, serv.members);
+                        //}
+                        if (message.includes("!members") == true) {
+                            bot.sendMessage(msg.channel, "the number of members in this server: " + serv.members.length);
+                        }
                     }
 
                     //camp laslow only
-                    if (bot.servers[i] == "Camp Laslow")
+                    if (serv == "Camp Laslow")
                     {
-
+                        if (message.includes("!owner") == true) {
+                            bot.sendMessage(msg.channel, "the owner of this server is: " + serv.owner);
+                        }
+                        if (message.includes("!callall") == true) {
+                            bot.sendMessage(msg.channel, serv.members);
+                        }
+                        if (message.includes("!members") == true) {
+                            bot.sendMessage(msg.channel, "the number of members in this server: " + serv.members.length);
+                        }
                     }
 
                 }
@@ -180,8 +245,8 @@ bot.on("message", function (msg) {
             //fun shit (text)
             {
                 //dice roll
-                if (message.includes("!d6") == true) {
-                    bot.sendMessage(msg.channel, "you got " + Math.floor((Math.random() * 6) + 1));
+                if (message.includes("!roll") == true) {
+                    bot.sendMessage(msg.channel, "you got " + Math.floor((Math.random() * msg.content.substring(6)) + 1));
                 }
                 //coin toss
                 if (message.includes("!coin") == true) {
@@ -190,11 +255,15 @@ bot.on("message", function (msg) {
                     else
                         bot.sendMessage(msg.channel, "tailes");
                 }
+                //stare
+                if (message.includes("!stare")) {
+                    bot.sendMessage(msg.channel,"ಠ_ಠ")
+                }
             }
 
             //fun shit (links)
             {
-                if (message.includes("!good luck") == true) {
+                if (message.includes("!goodluck") == true) {
                     bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=gjVmeKWOsEU");
                 }
 
@@ -213,6 +282,9 @@ bot.on("message", function (msg) {
                 if (message.includes("!lolidance") == true) {
                     bot.sendMessage(msg.channel, "http://loli.dance/");
                 }
+                if (message.includes("!roxasvssora") == true) {
+                    bot.sendMessage(msg.channel, "https://youtu.be/_2e7bX2oVlQ");
+                }
 
             }
 
@@ -224,7 +296,7 @@ bot.on("message", function (msg) {
                 if (message.includes("!mat") == true) {
                     bot.sendMessage(msg.channel, "https://www.twitch.tv/matthewmcmuscles");
                 }
-                if (message.includes("!best friends") == true) {
+                if (message.includes("!bestfriends") == true) {
                     bot.sendMessage(msg.channel, "https://www.twitch.tv/superbestfriendsplay");
                 }
                 if (message.includes("!karp") == true) {
@@ -241,18 +313,10 @@ bot.on("message", function (msg) {
                 }
             }
 
-            //commands
-            {
-                if (message.includes("!commands") == true) {
-                    bot.sendMessage(msg.channel, "http://pastebin.com/79mjZSBV");
-                }
-            }
-
             //TODO: add !rip
 
             //fun shit (pics)
-            {
-                
+            { 
                 if (message.includes("!dio") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/dio.jpg", "dio.png");
                 }
@@ -277,7 +341,6 @@ bot.on("message", function (msg) {
                 if (message.includes("!discomfort") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!discomfort.png", "!discomfort.png");
                 }
-                
                 if (message.includes("!merkabah") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!merkabah.png", "!merkabah.png");
                 }
@@ -312,7 +375,7 @@ bot.on("message", function (msg) {
                 if (message.includes("!thisisfine") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/this is fine.jpg", "fine.png");
                 }
-                if (message.includes("!not lying") == true) {
+                if (message.includes("!notlying") == true) {
                     bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/totally not lying.jpg", "this is a lie.png");
                 }
                 if (message.includes("!undertale") == true) {
