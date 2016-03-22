@@ -10,7 +10,6 @@
     // Get the email and password
     var AuthDetails = require("./auth.json");
     var bot = new Discord.Client();
-    var Test = require("./test.js");
 }
 
 //actual fuctions :P
@@ -36,6 +35,26 @@
         function isInArray(value, array) {
             return array.indexOf(value) > -1;
         }
+    }
+
+    function write(text)
+    {
+        {
+            var document = typeof document === 'undefined' ? '' : document;
+            var canvas = document.getElementById("myCanvas");
+            var context = canvas.getContext("2d");
+            var imageObj = new Image();
+
+            context.drawImage(imageObj, 10, 10);
+            context.font = "20px Calibri";
+            context.fillText(text, 50, 200);
+
+            var win = window.open();
+            win.document.write("<img src='" + canvas.toDataURL() + "'/>")
+            return "<img src='" + canvas.toDataURL() + "'/>";
+
+        }
+        imageObj.src = "C:/Users/Yousef/Pictures/nep.jpg";
     }
 }
 
@@ -80,11 +99,6 @@ bot.on("message", function (msg) {
                 wait(4000);
                 bot.sendMessage(msg.author, "SwiftRage dont use @ Everyone again SwiftRage !!");
             }
-
-            //bot respond to chimpbucket's daily "rawr"s
-            if (message.includes("rawr") == true) {
-                bot.sendMessage(msg.channel, "VoHiYo , how are you?")
-            }
         }
 
         //for error catching :P
@@ -109,7 +123,20 @@ bot.on("message", function (msg) {
                         //wait(300);
                     }
 
+                    /*
+                    if (msg.embeds.length > 2) {
+                        bot.sendMessage(msg.author, "embeds only" + msg.embeds.length);
+                        bot.deleteMessage(msg);
+                    }
 
+                    
+
+                    if (message.includes("!text") == true) {
+                        file = write(msg.content.substring(6));
+                        bot.sendFile(msg.channel, file);
+
+                    }
+                    */
                     //TODO: manage info
                     if (message.includes("!info") == true) {
                         var index = msg.content.indexOf("@");
@@ -158,7 +185,8 @@ bot.on("message", function (msg) {
                         bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!cutie.png", "!Cutie.png");
                     }
                     if (message.includes("rawr") == true) {
-                        bot.sendMessage(msg.channel, "VoHiYo cumbucket, how are you?")
+                        wait(3000);
+                        bot.sendMessage(msg.channel, "VoHiYo how are you?")
                     }
                     if (message.includes("!owner") == true) {
                         bot.sendMessage(msg.channel, "the owner of this server is: " + serv.owner);
@@ -274,6 +302,18 @@ bot.on("message", function (msg) {
                     if (message.includes("!short") == true) {
                         bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!short.jpg", "short.png");
                     }
+                    if (message.includes("!roxasvssora") == true) {
+                        bot.sendMessage(msg.channel, "https://youtu.be/_2e7bX2oVlQ");
+                    }
+                    if (message.includes("!finalmix") == true) {
+                        bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=NpYqFJxVuBc");
+                    }
+                    if (message.includes("!ocelot") == true) {
+                        bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=kCcfhCvoEfI");
+                    }
+                    if (message.includes("!todduhira") == true) {
+                        bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=yvGXCisAaR4");
+                    }
 
 
                 }
@@ -336,9 +376,6 @@ bot.on("message", function (msg) {
 
                 if (message.includes("!lolidance") == true) {
                     bot.sendMessage(msg.channel, "http://loli.dance/");
-                }
-                if (message.includes("!roxasvssora") == true) {
-                    bot.sendMessage(msg.channel, "https://youtu.be/_2e7bX2oVlQ");
                 }
 
             }
