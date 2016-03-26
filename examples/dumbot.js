@@ -10,7 +10,9 @@
     // Get the email and password
     var AuthDetails = require("./auth.json");
     var bot = new Discord.Client();
+    var request = require("superagent");
 }
+
 
 //actual fuctions :P
 {
@@ -37,26 +39,11 @@
         }
     }
 
-    function write(text)
-    {
-        {
-            var document = typeof document === 'undefined' ? '' : document;
-            var canvas = document.getElementById("myCanvas");
-            var context = canvas.getContext("2d");
-            var imageObj = new Image();
-
-            context.drawImage(imageObj, 10, 10);
-            context.font = "20px Calibri";
-            context.fillText(text, 50, 200);
-
-            var win = window.open();
-            win.document.write("<img src='" + canvas.toDataURL() + "'/>")
-            return "<img src='" + canvas.toDataURL() + "'/>";
-
-        }
-        imageObj.src = "C:/Users/Yousef/Pictures/nep.jpg";
-    }
+   
 }
+
+
+
 
 //when the bot is ready
 bot.on("ready", function () {
@@ -123,6 +110,28 @@ bot.on("message", function (msg) {
                         //wait(300);
                     }
 
+
+
+                    if (message.includes("!testx") == true) {
+                        var suffix = msg.content.substring(7);
+                        require("request")("https://api.twitch.tv/kraken/streams/"+suffix,
+                        function(err,res,body){
+                            var stream = JSON.parse(body);
+                            if(stream.stream){
+                                bot.sendMessage(msg.channel, suffix
+                                    +" is online, playing "
+                                    +stream.stream.game
+                                    +"\n"+stream.stream.channel.status
+                                    +"\n"+stream.stream.preview.large)
+                            }else{
+                                bot.sendMessage(msg.channel, suffix+" is offline")
+                            }
+                        });
+                    }
+
+
+
+
                     /*
                     if (msg.embeds.length > 2) {
                         bot.sendMessage(msg.author, "embeds only" + msg.embeds.length);
@@ -137,21 +146,39 @@ bot.on("message", function (msg) {
 
                     }
                     */
-                    //TODO: manage info
-                    if (message.includes("!info") == true) {
-                        var index = msg.content.indexOf("@");
-                        if (index > 5)
-                            bot.sendMessage(msg.channel, "<" + msg.content.substring(index) + " : " + serv.rolesOfUser("<" + msg.content.substring(index)));//
+                    //TODO: manage do the todd shit
+                    if (message.includes("!textr") == true) {
+                        
+                            
+                        {
+                            //var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+                            //var api = new XMLHttpRequest();
+                            //api.open("GET", "https://api.imgflip.com/caption_image");
+
+                            /*
+                            var todd = "https://imgflip.com/memegenerator/62891149/todd"
+                            var tags = msg.content.split("$");
+                            bot.sendMessage(msg.channel, tags);
+                            var Imgflipper = require("imgflipper");
+                            var imgflipper = new Imgflipper(AuthDetails.imgflip_username, AuthDetails.imgflip_password);
+                            imgflipper.generateMeme(meme, tags[1]?tags[1]:"", tags[2]?tags[2]:"", function(err, image){
+                            bot.sendMessage(msg.channel,image);
+                            });*/
+                        }
+
                     }
 
 
                     //TODO: manage roles
                     if (message.includes("!roles") == true) {
-                        bot.sendMessage(msg.channel, "the roles of this server are: " + serv.roles[0]);
+                        bot.sendMessage(msg.channel, "the roles of this server are: ");
                     }
-                    if (message.includes("!members") == true) {
-                        bot.sendMessage(msg.channel, "the number of members in this server: " + serv.members.length);
+
+                    if (message.includes("!detail") == true) {
+                        bot.sendMessage(msg.channel, bot.forceFetchUsers());
                     }
+
+
 
 
                     if (message.includes("!testing") == true) {
@@ -162,6 +189,7 @@ bot.on("message", function (msg) {
 
                     if (message.includes("!test5") == true) {
                         //var usr = @159386718712102912;
+
 
                         //bot.banMember("<" + msg.content.substring(index), serv);
 
@@ -499,3 +527,8 @@ bot.on("message", function (msg) {
 });
 
 bot.login(AuthDetails.email, AuthDetails.password);
+
+
+
+
+
