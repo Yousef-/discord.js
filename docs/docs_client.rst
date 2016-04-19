@@ -9,6 +9,43 @@ This page contains documentation on the `Discord.Client` class. This should be u
 
 --------
 
+Parameters
+----------
+
+Client takes an options object, and supports the following options:.
+
+autoReconnect
+~~~~~~~~~~~~~
+
+Have discord.js autoreconnect when connection is lost.
+
+compress
+~~~~~~~~
+
+Have Discord send a compressed READY packet.
+
+forceFetchUsers
+~~~~~~~~~~~~~~~
+
+Make the library get all the users in all guilds, and delay the ready event until all users are received. This will slow down ready times and increase initial network traffic.
+
+largeThreshold
+~~~~~~~~~~~~~~
+
+Set a custom large_threshold (the max number of offline members Discord sends in the initial GUILD_CREATE). The maximum is 250.
+
+maxCachedMessages
+~~~~~~~~~~~~~~~~~
+
+The maximum number of messages to cache per channel. Decreasing this leads to more missing messageUpdated/messageDeleted events, increasing this leads to more RAM usage, especially over time.
+
+rateLimitAsError
+~~~~~~~~~~~~~~~~
+
+Have the lib throw a rejection Promise/callback when being ratelimited, instead of auto-retrying.
+
+--------
+
 Attributes
 ----------
 
@@ -32,10 +69,20 @@ servers
 
 A Cache_ of Server_ objects that the client has cached.
 
+unavailableServers
+~~~~~~~~~~~~~~~~~~
+
+A Cache_ of Server_ objects that the client has cached that are unavailable.
+
+voiceConnections
+~~~~~~~~~~~~~~~~
+
+A Cache_ of VoiceConnection_ objects that the client is in.
+
 voiceConnection
 ~~~~~~~~~~~~~~~
 
-A VoiceConnection_ object that is the current voice connection (if any).
+Returns a VoiceConnection_ object, is an alias to voiceConnections[0].
 
 readyTime
 ~~~~~~~~~
@@ -127,21 +174,30 @@ sendMessage(channel, content, `options`, `callback`)
 Sends a message to the specified channel.
 
 - **channel** - a `Channel Resolvable`_
-- **content** - a `String Resolvable`_ - the message you want to send
-- **options** - `object` containing:
-    - **tts** - `Boolean`, should message be text-to-speech
+- **content** - (Optional if file is passed in options) a `String Resolvable`_ - the message you want to send
+- **options** - (Optional) `object` containing:
+    - **tts** - (Optional) `Boolean`, should message be text-to-speech
+    - **file** - (Optional) `object`, containing:
+        - **file** - a `File Resolvable`_
+        - **name** - (Optional) `String`, filename to upload file as
 - **callback** - `function` that takes the following parameters:
     - **error** - error object if any occurred
     - **message** - the sent Message_
 
-sendFile(channel, attachment, name, `callback`)
+sendTTSMessage(channel, content, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An alias for `sendMessage(channel, content, {tts: true}, callback)`
+
+sendFile(channel, attachment, name, content, `callback`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Sends a file to the specified channel.
 
 - **channel** - a `Channel Resolvable`_
 - **attachment** - A `File Resolvable`_
-- **name** - (Optional) `String`, name of the file containing the extension
+- **name** - (Optional) `String`, filename to upload file as
+- **content** - (Optional) `String`, text message to send with the attachment
 - **callback** - `function` taking the following:
     - **error** - error if any occurred
     - **message** - the sent Message_
@@ -158,6 +214,11 @@ Shortcut to `sendMessage` but prepends a mention to the sender of the original m
 - **callback** - `function` that takes the following parameters:
     - **error** - error object if any occurred
     - **message** - the sent Message_
+
+replyTTS(message, content, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An alias for `reply(message, content, {tts: true}, callback)`
 
 updateMessage(message, content, `options`, `callback`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -210,7 +271,7 @@ Gets a list of banned users in a server.
 joinServer(invite, `callback`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Joins a server from the given invite
+Joins a server from the given invite. This will not work for OAuth bot accounts.
 
 - **invite** - an `Invite Resolvable`_
 - **callback** - `function` taking the following:
@@ -223,15 +284,42 @@ createServer(name, region, `callback`)
 Creates a server
 
 - **name** - `String`, name of the server
-- **region** - `String`, region of the server, currently **us-west, us-east, singapore, london, sydney** or **amsterdam**
+- **region** - `String`, region of the server, currently **us-west, us-east, us-south, us-central, singapore, london, sydney, frankfurt** or **amsterdam**
 - **callback** - `function` taking the following:
     - **error** - error if any occurred
     - **server** - the created Server_
 
-leaveServer(server, `callback`)
+updateServer(server, options, `callback`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Leaves/deletes a server that the client is in
+
+- **server** - a `Server Resolvable`_
+- **options** - `object` containing (all optional):
+    - **name** - `String`, name of the server
+    - **region** - `String`, region of the server, currently **us-west, us-east, us-south, us-central, singapore, london, sydney, frankfurt** or **amsterdam**
+    - **ownerID** - a `User Resolvable`_, user to transfer the server to (must be owner)
+    - **icon** - a `Base64 Resolvable`_
+    - **splash** - a `Base64 Resolvable`_ (VIP only)
+    - **verificationLevel** - `Number`, a verification level (0, 1, 2, 3)
+    - **afkChannelID** - a `Channel Resolvable`_, the AFK voice channel
+    - **afkTimeout** - `Number`, AFK timeout in seconds
+- **callback** - `function` taking the following:
+    - **error** - error if any occurred
+
+deleteServer(server, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deletes a server that the client is in
+
+- **server** - a `Server Resolvable`_
+- **callback** - `function` taking the following:
+    - **error** - error if any occurred
+
+leaveServer(server, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Leaves a server that the client is in
 
 - **server** - a `Server Resolvable`_
 - **callback** - `function` taking the following:
@@ -339,7 +427,7 @@ setStatus(status, `game`, `callback`)
 Sets the Discord Status of the Client
 
 - **status** - `String`, either ``online, here, active, available`` or ``idle, away``
-- **game** - `String/Number`, ID of Discord Game being played
+- **game** - `String`, Name of game being played, or `null` to clear
 - **callback** - `function` taking the following:
     - **error** - error if any occurred
 
@@ -356,6 +444,15 @@ setStatusOnline()
 **Aliases:** `setStatusHere`, `setStatusActive`, `setStatusAvailable`
 
 Sets the status of the Client to Online
+
+setPlayingGame(game, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sets the Discord Status of the Client
+
+- **game** - `String`, Name of game being played, or `null` to clear
+- **callback** - `function` taking the following:
+    - **error** - error if any occurred
 
 setChannelTopic(channel, topic, `callback`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -440,18 +537,19 @@ Sets the username of the client
 joinVoiceChannel(channel, `callback`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Joins a Voice Channel to begin transmitting audio
+Joins a Voice Channel to begin transmitting audio. If you have an OAuth bot account, you can connect to multiple voice channels at once, but only one per guild.
 
 - **channel** - A `VoiceChannel Resolvable`_
 - **callback** - `function` that takes the following:
     - **error** - error if any occurred
     - **connection** - VoiceConnection_, the created Voice Connection.
 
-leaveVoiceChannel(`callback`)
+leaveVoiceChannel(channel, `callback`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Leaves the currently connected Voice Channel if connected
+Leaves the specified Voice Channel if connected
 
+- **channel** - A `VoiceChannel Resolvable`_
 - **callback** - `function` that takes the following:
     - **error** - error if any occurred
 
@@ -564,10 +662,45 @@ Overwrites the permissions of a role or a user in a channel
         "attachFiles" : true
     }
 
-forceFetchUsers()
-~~~~~~~~~~~~~~~~~
+muteMember(user, server, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As of 12/02/2016, the API will now only return the online users in a server if it has more than 250 users. If you want to be aware of ALL users in a server, use this function. As of yet, it doesn't return anything and users are just silently and gradually added to the relevant servers.
+Server-mutes a member.
+
+- **user** - A `User Resolvable`_ to mute
+- **server** - A `Server Resolvable`_ to mute the user in
+- **callback** - `function` taking the following:
+    - **error** - error if any occurred.
+
+unmuteMember(user, server, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Server-unmutes a member.
+
+- **user** - A `User Resolvable`_ to unmute
+- **server** - A `Server Resolvable`_ to unmute the user in
+- **callback** - `function` taking the following:
+    - **error** - error if any occurred.
+
+deafenMember(user, server, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Server-deafens a member.
+
+- **user** - A `User Resolvable`_ to deafen
+- **server** - A `Server Resolvable`_ to deafen the user in
+- **callback** - `function` taking the following:
+    - **error** - error if any occurred.
+
+undeafenMember(user, server, `callback`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Server-undeafens a member.
+
+- **user** - A `User Resolvable`_ to undeafen
+- **server** - A `Server Resolvable`_ to undeafen the user in
+- **callback** - `function` taking the following:
+    - **error** - error if any occurred.
 
 Events
 ------

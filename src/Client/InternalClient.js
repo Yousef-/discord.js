@@ -12,6 +12,7 @@ import Resolver from "./Resolver/Resolver";
 
 import User from "../Structures/User";
 import Channel from "../Structures/Channel";
+import ServerChannel from "../Structures/ServerChannel";
 import TextChannel from "../Structures/TextChannel";
 import VoiceChannel from "../Structures/VoiceChannel";
 import PMChannel from "../Structures/PMChannel";
@@ -51,15 +52,33 @@ export default class InternalClient {
 	}
 
 	apiRequest(method, url, useAuth, data, file) {
+        var endpoint = url.replace(/\/[0-9]+/g, "/:id");
+		if(this.retryAfters[endpoint]) {
+			if(this.retryAfters[endpoint] < Date.now()) {
+				delete this.retryAfters[endpoint];
+			} else {
+				return new Promise((resolve, reject) => {
+					setTimeout(() => {
+						this.apiRequest.apply(this, arguments).then(resolve).catch(reject);
+					}, this.retryAfters[endpoint] - Date.now());
+				});
+			}
+		}
 		let ret = request[method](url);
 		if (useAuth) {
 			ret.set("authorization", this.token);
 		}
-		if (data) {
-			ret.send(data);
-		}
 		if (file) {
 			ret.attach("file", file.file, file.name);
+			if (data) {
+				for (var i in data) {
+					if (data[i] !== undefined) {
+						ret.field(i, data[i]);
+					}
+				}
+			}
+		} else if (data) {
+			ret.send(data);
 		}
 		ret.set('User-Agent', this.userAgentInfo.full);
 		return new Promise((resolve, reject) => {
@@ -74,10 +93,11 @@ export default class InternalClient {
 
 						if (data.headers["retry-after"] || data.headers["Retry-After"]) {
 							var toWait = data.headers["retry-after"] || data.headers["Retry-After"];
-							toWait = parseInt(toWait);
+							if(!this.retryAfters[endpoint])
+								this.retryAfters[endpoint] = Date.now() + parseInt(toWait);
 							setTimeout(() => {
 								this.apiRequest.apply(this, arguments).then(resolve).catch(reject);
-							}, toWait);
+							}, this.retryAfters[endpoint] - Date.now());
 						} else {
 							return reject(error);
 						}
@@ -108,9 +128,15 @@ export default class InternalClient {
 
 		// creates 4 caches with discriminators based on ID
 		this.users = new Cache();
+		this.friends = new Cache();
+		this.blocked_users = new Cache();
+		this.outgoing_friend_requests = new Cache();
+		this.incoming_friend_requests = new Cache();
 		this.channels = new Cache();
 		this.servers = new Cache();
+		this.unavailableServers = new Cache();
 		this.private_channels = new Cache();
+		this.autoReconnectInterval = 1000;
 
 		this.intervals = {
 			typing : [],
@@ -118,10 +144,11 @@ export default class InternalClient {
 			misc : []
 		};
 
-		this.voiceConnection = null;
+		this.voiceConnections = new Cache();
 		this.resolver = new Resolver(this);
 		this.readyTime = null;
 		this.messageAwaits = {};
+		this.retryAfters = {};
 
 		this.tokenCacher = new TokenCacher(this.client);
 		this.tokenCacher.init(0);
@@ -135,21 +162,26 @@ export default class InternalClient {
 		}
 	}
 
-	disconnected(forced = false) {
+	disconnected(autoReconnect = false) {
 
 		this.cleanIntervals();
 
-		this.leaveVoiceChannel();
+		this.voiceConnections.forEach(vc => {
+			this.leaveVoiceChannel(vc);
+		});
 
-		if (this.client.options.revive && !forced) {
-			this.setup();
+		if (autoReconnect) {
+			this.autoReconnectInterval = Math.min(this.autoReconnectInterval * (Math.random() + 1), 60000);
+			setTimeout(() => {
+				this.setup();
 
-			// Check whether the email is set (if not, only a token has been used for login)
-			if (this.email) {
-				this.login(this.email, this.password);
-			} else {
-				this.loginWithToken(this.token);
-			}
+				// Check whether the email is set (if not, only a token has been used for login)
+				if (this.email) {
+					this.login(this.email, this.password);
+				} else {
+					this.loginWithToken(this.token);
+				}
+			}, this.autoReconnectInterval);
 		}
 
 		this.client.emit("disconnected");
@@ -169,12 +201,43 @@ export default class InternalClient {
 	}
 
 	//def leaveVoiceChannel
-	leaveVoiceChannel() {
-		if (this.voiceConnection) {
-			this.voiceConnection.destroy();
-			this.voiceConnection = null;
+	leaveVoiceChannel(chann) {
+		if (this.user.bot) {
+			var leave = (connection) => {
+				return new Promise((resolve, reject) => {
+					connection.destroy();
+					resolve();
+				});
+			};
+
+			if (chann instanceof VoiceChannel) {
+				return this.resolver.resolveChannel(chann).then(channel => {
+					if (!channel) {
+						return Promise.reject(new Error("voice channel does not exist"));
+					}
+
+					if (channel.type !== 'voice') {
+						return Promise.reject(new Error("channel is not a voice channel!"));
+					}
+
+					var connection = this.voiceConnections.get("voiceChannel", channel);
+					if (!connection) {
+						return Promise.reject(new Error("not connected to that voice channel"));
+					}
+					return leave(connection);
+				});
+			} else if (chann instanceof VoiceConnection) {
+				return leave(chann);
+			} else {
+				return Promise.reject(new Error("invalid voice channel/connection to leave"))
+			}
+		} else {
+			// preserve old functionality for non-bots
+			if (this.voiceConnections[0]) {
+				this.voiceConnections[0].destroy();
+			}
+			return Promise.resolve();
 		}
-		return Promise.resolve();
 	}
 
 	//def awaitResponse
@@ -209,67 +272,119 @@ export default class InternalClient {
 				return Promise.reject(new Error("channel is not a voice channel!"));
 			}
 
-			return this.leaveVoiceChannel()
-			.then(() => {
+			var joinSendWS = () => {
+				this.sendWS({
+					op: 4,
+					d: {
+						"guild_id": channel.server.id,
+						"channel_id": channel.id,
+						"self_mute": false,
+						"self_deaf": false
+					}
+				});
+			}
+
+			var joinVoice = () => {
 				return new Promise((resolve, reject) => {
 					var session, token, server = channel.server, endpoint;
 
 					var check = m => {
 						var data = JSON.parse(m);
+						if (data.d.guild_id !== server.id) return // ensure it is the right server
+
 						if (data.t === "VOICE_STATE_UPDATE") {
 							session = data.d.session_id;
 						} else if (data.t === "VOICE_SERVER_UPDATE") {
 							token = data.d.token;
 							endpoint = data.d.endpoint;
-							var chan = this.voiceConnection = new VoiceConnection(
+							var chan = new VoiceConnection(
 								channel, this.client, session, token, server, endpoint
 							);
+							this.voiceConnections.add(chan);
 
 							chan.on("ready", () => resolve(chan));
 							chan.on("error", reject);
 
 							this.client.emit("debug", "removed temporary voice websocket listeners");
 							this.websocket.removeListener("message", check);
-
 						}
 					};
 
 					this.websocket.on("message", check);
-					this.sendWS({
-						op: 4,
-						d: {
-							"guild_id": server.id,
-							"channel_id": channel.id,
-							"self_mute": false,
-							"self_deaf": false
-						}
-					});
+					joinSendWS();
 				});
-			});
+			}
+
+			var existingServerConn = this.voiceConnections.get("server", channel.server); // same server connection
+			if (existingServerConn) {
+				joinSendWS(); // Just needs to update by sending via WS, movement in cache will be handled by global handler
+				return Promise.resolve(existingServerConn);
+			}
+
+			if (!this.user.bot && this.voiceConnections.length > 0) { // nonbot, one voiceconn only, just like last time just disconnect
+				return this.leaveVoiceChannel().then(joinVoice);
+			}
+
+			return joinVoice();
 		});
 	}
 
-	// def forceFetchUsers
-	forceFetchUsers() {
-		this.sendWS({
-			op : 8,
-			d : {
-				guild_id : this.servers.filter(srv => srv.large && srv.memberCount > srv.members.length).map(srv => srv.id),
-				query : "",
-				limit : 0
-			}
-		});
-		this.chunkloaderCount = {};
-		for (var server of this.servers.filter(srv => srv.large && srv.memberCount > srv.members.length)) {
-			this.chunkloaderCount[server.id] = Math.ceil(server.memberCount / 1000);
+	// Backwards-compatible utility getter method for the first voice connection
+	// Thanks to #q (@qeled) for suggesting this
+	get voiceConnection() {
+		return this.voiceConnections[0];
+	}
+
+	getGuildMembers(serverID, chunkCount) {
+		this.forceFetchCount[serverID] = chunkCount;
+		if(this.forceFetchLength + 3 + serverID.length > 4082) { // 4096 - '{"op":8,"d":[]}'.length + 1 for lazy comma offset
+			this.requestGuildMembers(this.forceFetchQueue);
+			this.forceFetchQueue = [serverID];
+			this.forceFetchLength = 1 + serverID.length + 3;
+		} else {
+			this.forceFetchQueue.push(serverID);
+			this.forceFetchLength += serverID.length + 3;
 		}
-		return new Promise((resolve, reject) => {
-			if (!server) {
-				resolve();
-			} else {
-				this.chunkloaderCallback = resolve;
+	}
+
+	requestGuildMembers(serverID, query, limit) {
+		this.sendWS({op: 8,
+			d: {
+				guild_id: serverID,
+				query: query || "",
+				limit: limit || 0
 			}
 		});
+	}
+
+	checkReady() {
+		if(!this.readyTime) {
+			if(this.forceFetchQueue.length > 0) {
+				this.requestGuildMembers(this.forceFetchQueue);
+				this.forceFetchQueue = [];
+				this.forceFetchLength = 1;
+			} else {
+				for (var key in this.forceFetchCount) {
+					if (this.forceFetchCount.hasOwnProperty(key)) {
+						return;
+					}
+				}
+				this.readyTime = Date.now();
+				this.client.emit("ready");
+			}
+		}
+	}
+
+	restartServerCreateTimeout() {
+		if(this.guildCreateTimeout) {
+			clearTimeout(this.guildCreateTimeout);
+			this.guildCreateTimeout = null;
+		}
+		if(!this.readyTime) {
+			this.guildCreateTimeout = setTimeout(() => {
+				this.checkReady();
+			}, 1000);
+		}
 	}
 
 	// def createServer
@@ -298,13 +413,45 @@ export default class InternalClient {
 	}
 
 	//def updateServer
-	updateServer(server, name, region) {
+	updateServer(server, options) {
 		var server = this.resolver.resolveServer(server);
 		if (!server) {
 			return Promise.reject(new Error("server did not resolve"));
 		}
 
-		return this.apiRequest("patch", Endpoints.SERVER(server.id), true, { name: name || server.name, region: region || server.region })
+		var newOptions = {
+			name: options.name || server.name,
+			region: options.region || server.region
+		};
+
+		if (options.icon) {
+			newOptions.icon = this.resolver.resolveToBase64(options.icon);
+		}
+		if (options.splash) {
+			newOptions.splash = this.resolver.resolveToBase64(options.splash);
+		}
+		if (options.owner) {
+			var user = this.resolver.resolveUser(options.owner);
+			if (!user) {
+				return Promise.reject(new Error("owner could not be resolved"));
+			}
+			options.owner_id = user.id;
+		}
+		if (options.verificationLevel) {
+			options.verification_level = user.verificationLevel;
+		}
+		if (options.afkChannel) {
+			var channel = this.resolver.resolveUser(options.afkChannel);
+			if (!channel) {
+				return Promise.reject(new Error("afkChannel could not be resolved"));
+			}
+			options.afk_channel_id = channel.id;
+		}
+		if (options.afkTimeout) {
+			options.afk_timeout = user.afkTimeout;
+		}
+
+		return this.apiRequest("patch", Endpoints.SERVER(server.id), true, options)
 		.then(res => {
 			// wait until the name and region are updated
 			return waitFor(() =>
@@ -401,6 +548,7 @@ export default class InternalClient {
 			throw error;
 		})
 		.catch(error => {
+			this.websocket = null;
 			this.state = ConnectionState.DISCONNECTED;
 			client.emit("disconnected");
 			throw error;
@@ -416,7 +564,7 @@ export default class InternalClient {
 		return this.apiRequest("post", Endpoints.LOGOUT, true)
 		.then(() => {
 			if (this.websocket) {
-				this.websocket.close();
+				this.websocket.close(1000);
 				this.websocket = null;
 			}
 			this.token = null;
@@ -449,22 +597,81 @@ export default class InternalClient {
 
 	// def sendMessage
 	sendMessage(where, _content, options = {}) {
+		if (options.file) {
+			if (typeof options.file !== "object") {
+				options.file = {
+					file: options.file
+				};
+			}
+			if (!options.file.name) {
+				if (options.file.file instanceof String || typeof options.file.file === "string") {
+					options.file.name = require("path").basename(options.file.file);
+				} else if (options.file.file.path) {
+					// fs.createReadStream()'s have .path that give the path. Not sure about other streams though.
+					options.file.name = require("path").basename(options.file.file.path);
+				} else {
+					options.file.name = "default.png"; // Just have to go with default filenames.
+				}
+			}
+		}
 
 		return this.resolver.resolveChannel(where)
 		.then(destination => {
-			//var destination;
-			var content = this.resolver.resolveString(_content);
+			if (options.file) {
+				return this.resolver.resolveFile(options.file.file)
+				.then(file =>
+					this.apiRequest("post", Endpoints.CHANNEL_MESSAGES(destination.id), true, {
+						content: _content,
+						tts: options.tts
+					}, {
+						name: options.file.name,
+						file: file
+					}).then(res => destination.messages.add(new Message(res, destination, this.client)))
+				)
+			} else {
+				var content = this.resolver.resolveString(_content);
 
-			return this.apiRequest("post", Endpoints.CHANNEL_MESSAGES(destination.id), true, {
-				content: content,
-				tts: options.tts
-			})
-			.then(res =>
-				destination.messages.add(new Message(res, destination, this.client))
-			);
+				return this.apiRequest("post", Endpoints.CHANNEL_MESSAGES(destination.id), true, {
+					content: content,
+					tts: options.tts
+				})
+				.then(res => destination.messages.add(new Message(res, destination, this.client)));
+			}
 		});
 
 	}
+
+	// def sendFile
+	sendFile(where, _file, name, content) {
+		if (!name) {
+			if (_file instanceof String || typeof _file === "string") {
+				name = require("path").basename(_file);
+			} else if (_file && _file.path) {
+				// fs.createReadStream()'s have .path that give the path. Not sure about other streams though.
+				name = require("path").basename(_file.path);
+			} else {
+				name = "default.png"; // Just have to go with default filenames.
+			}
+		}
+
+		if(content) {
+			content = {
+				content
+			};
+		}
+
+		return this.resolver.resolveChannel(where)
+		.then(channel =>
+			this.resolver.resolveFile(_file)
+			.then(file =>
+				this.apiRequest("post", Endpoints.CHANNEL_MESSAGES(channel.id), true, content, {
+					name,
+					file
+				}).then(res => channel.messages.add(new Message(res, channel, this.client)))
+			)
+		);
+	}
+
 	// def deleteMessage
 	deleteMessage(_message, options = {}) {
 
@@ -504,31 +711,6 @@ export default class InternalClient {
 			message,
 			new Message(res, message.channel, this.client)
 		));
-	}
-
-	// def sendFile
-	sendFile(where, _file, name) {
-		if (!name) {
-			if (_file instanceof String || typeof _file === "string") {
-				name = require("path").basename(_file);
-			} else if (_file.path) {
-				// fs.createReadStream()'s have .path that give the path. Not sure about other streams though.
-				name = require("path").basename(_file.path);
-			} else {
-				name = "default.png"; // Just have to go with default filenames.
-			}
-		}
-
-		return this.resolver.resolveChannel(where)
-		.then(channel =>
-			this.resolver.resolveFile(_file)
-			.then(file =>
-				this.apiRequest("post", Endpoints.CHANNEL_MESSAGES(channel.id), true, null, {
-					name,
-					file
-				}).then(res => channel.messages.add(new Message(res, channel, this.client)))
-			)
-		);
 	}
 
 	// def getChannelLogs
@@ -651,6 +833,34 @@ export default class InternalClient {
 		});
 	}
 
+	// def muteMember
+	muteMember(user, server) {
+		user = this.resolver.resolveUser(user);
+		server = this.resolver.resolveServer(server);
+		return this.apiRequest("patch", `${Endpoints.SERVER_MEMBERS(server.id)}/${user.id}`, true, { mute: true });
+	}
+
+	// def unmuteMember
+	unmuteMember(user, server) {
+		user = this.resolver.resolveUser(user);
+		server = this.resolver.resolveServer(server);
+		return this.apiRequest("patch", `${Endpoints.SERVER_MEMBERS(server.id)}/${user.id}`, true, { mute: false });
+	}
+
+	// def deafenMember
+	deafenMember(user, server) {
+		user = this.resolver.resolveUser(user);
+		server = this.resolver.resolveServer(server);
+		return this.apiRequest("patch", `${Endpoints.SERVER_MEMBERS(server.id)}/${user.id}`, true, { deaf: true });
+	}
+
+	// def undeafenMember
+	undeafenMember(user, server) {
+		user = this.resolver.resolveUser(user);
+		server = this.resolver.resolveServer(server);
+		return this.apiRequest("patch", `${Endpoints.SERVER_MEMBERS(server.id)}/${user.id}`, true, { deaf: false });
+	}
+
 	// def createRole
 	createRole(server, data) {
 		server = this.resolver.resolveServer(server);
@@ -758,7 +968,11 @@ export default class InternalClient {
 
 		var roledata = role.server.rolesOf(member);
 		if (roledata) {
-			return roledata.find(r => r.id == role.id);
+			for (var r of roledata) {
+				if (r.id == role.id) {
+					return r;
+				}
+			}
 		}
 		return null;
 	}
@@ -876,43 +1090,46 @@ export default class InternalClient {
 	overwritePermissions(channel, role, updated) {
 		return this.resolver.resolveChannel(channel)
 		.then(channel => {
-			var user;
-			if (role instanceof User) {
-				user = role;
-			} else {
-				role = this.resolver.resolveRole(role);
+			if (!channel instanceof ServerChannel) {
+				return Promise.reject(new Error("Not a server channel"));
 			}
 
-			var data = {};
-			data.allow = 0;
-			data.deny = 0;
+			var data = {
+				allow: 0,
+				deny: 0
+			};
 
-			updated.allow = updated.allow || [];
-			updated.deny = updated.deny || [];
+			if (role instanceof String || typeof role === "string") {
+				role = this.resolver.resolveUser(role) || this.resolver.resolveRole(role);
+			}
 
-			if (role instanceof Role) {
+			if (role instanceof User) {
+				data.id = role.id;
+				data.type = "member";
+			} else if (role instanceof Role) {
 				data.id = role.id;
 				data.type = "role";
-			} else if (user) {
-				data.id = user.id;
-				data.type = "member";
 			} else {
-				throw new Error("role incorrect");
+				return Promise.reject(new Error("Role could not be resolved"));
+			}
+
+			var previousOverwrite = channel.permissionOverwrites.get("id", data.id);
+
+			if (previousOverwrite) {
+				data.allow |= previousOverwrite.allow;
+				data.deny |= previousOverwrite.deny;
 			}
 
 			for (var perm in updated) {
-				if (updated[perm]) {
-					if (perm instanceof String || typeof perm === "string") {
-						data.allow |= (Permissions[perm] || 0);
-					} else {
-						data.allow |= perm;
-					}
+				if (updated[perm] === true) {
+					data.allow |= (Permissions[perm] || 0);
+					data.deny &= ~(Permissions[perm] || 0);
+				} else if (updated[perm] === false) {
+					data.allow &= ~(Permissions[perm] || 0);
+					data.deny |= (Permissions[perm] || 0);
 				} else {
-					if (perm instanceof String || typeof perm === "string") {
-						data.deny |= (Permissions[perm] || 0);
-					} else {
-						data.deny |= perm;
-					}
+					data.allow &= ~(Permissions[perm] || 0);
+					data.deny &= ~(Permissions[perm] || 0);
 				}
 			}
 
@@ -1005,16 +1222,22 @@ export default class InternalClient {
 
 	//def updateDetails
 	updateDetails(data) {
-		if (!this.email && !data.email) {
-			throw new Error("Can't use updateDetails because only a token has been used for login!");
+		if (!this.user.bot && !(this.email || data.email)) {
+			throw new Error("Must provide email since a token was used to login");
 		}
-		return this.apiRequest("patch", Endpoints.ME, true, {
+
+		var options = {
 			avatar: this.resolver.resolveToBase64(data.avatar) || this.user.avatar,
-			email: data.email || this.email,
-			new_password: data.newPassword || null,
-			password: data.password || this.password,
 			username: data.username || this.user.username
-		});
+		}
+
+		if (this.email || data.email) {
+			options.email = data.email || this.email;
+			options.new_password = data.newPassword || null;
+			options.password = data.password || this.password;
+		}
+
+		return this.apiRequest("patch", Endpoints.ME, true, options);
 	}
 
 	//def setAvatar
@@ -1087,6 +1310,35 @@ export default class InternalClient {
 		return this.setChannelNameAndTopic(chann, data.name, data.topic);
 	}
 
+	//def addFriend
+	addFriend(user) {
+		if (this.user.bot) return Promise.reject(new Error("user is a bot, bot's do not have friends support"));
+
+		var id;
+		if (user instanceof String || typeof user === "string")
+			id = user;
+		else if (user instanceof User) {
+			user = this.resolver.resolveUser(user);
+			id = user.id
+		} else {
+			if (user.username && user.discriminator) // add by username and discriminator (pass in an object)
+				return this.apiRequest("put", Endpoints.FRIENDS, true, user);
+			else
+				return Promise.reject("invalid user")
+		}
+
+		return this.apiRequest("put", `${Endpoints.FRIENDS}/${id}`, true, {});
+	}
+
+	//def removeFriend
+	removeFriend(user) {
+		if (this.user.bot) return Promise.reject(new Error("user is a bot, bot's do not have friends support"));
+
+		user = this.resolver.resolveUser(user);
+
+		return this.apiRequest("delete", `${Endpoints.FRIENDS}/${user.id}`, true);
+	}
+
 	//def ack
 	ack(msg) {
 		msg = this.resolver.resolveMessage(msg);
@@ -1134,14 +1386,17 @@ export default class InternalClient {
 			});
 		};
 
-		this.websocket.onclose = () => {
+		this.websocket.onclose = (code) => {
 			self.websocket = null;
 			self.state = ConnectionState.DISCONNECTED;
-			self.disconnected();
+			self.disconnected(this.client.options.autoReconnect);
 		};
 
 		this.websocket.onerror = e => {
 			client.emit("error", e);
+			self.websocket = null;
+			self.state = ConnectionState.DISCONNECTED;
+			self.disconnected(this.client.options.autoReconnect);
 		};
 
 		this.websocket.onmessage = e => {
@@ -1167,28 +1422,53 @@ export default class InternalClient {
 					self.intervals.kai = setInterval(() => self.sendWS({ op: 1, d: Date.now() }), data.heartbeat_interval);
 
 					self.user = self.users.add(new User(data.user, client));
+
+					this.forceFetchCount = {};
+					this.forceFetchQueue = [];
+					this.forceFetchLength = 1;
+					this.autoReconnectInterval = 1000;
+
 					data.guilds.forEach(server => {
 						if (!server.unavailable) {
-							self.servers.add(new Server(server, client));
+							server = self.servers.add(new Server(server, client));
+							if(self.client.options.forceFetchUsers && server.members && server.members.length < server.memberCount) {
+								self.getGuildMembers(server.id, Math.ceil(server.memberCount / 1000));
+							}
 						} else {
-							client.emit("warn", "server was unavailable, could not create (ready)");
+							client.emit("debug", "server " + server.id + " was unavailable, could not create (ready)");
+							self.unavailableServers.add(server);
 						}
 					});
 					data.private_channels.forEach(pm => {
 						self.private_channels.add(new PMChannel(pm, client));
 					});
+					if (!data.user.bot) { // bots dont have friends
+						data.relationships.forEach(friend => {
+							if (friend.type === 1) { // is a friend
+								self.friends.add(new User(friend.user, client));
+							} else if (friend.type === 2) { // incoming friend requests
+								self.blocked_users.add(new User(friend.user, client));
+							} else if (friend.type === 3) { // incoming friend requests
+								self.incoming_friend_requests.add(new User(friend.user, client));
+							} else if (friend.type === 4) { // outgoing friend requests
+								self.outgoing_friend_requests.add(new User(friend.user, client));
+							} else {
+								client.emit("warn", "unknown friend type " + friend.type);
+							}
+						});
+					} else {
+						self.friends = null;
+						self.blocked_users = null;
+						self.incoming_friend_requests = null;
+						self.outgoing_friend_requests = null;
+					}
 					self.state = ConnectionState.READY;
 
 					client.emit("debug", `ready packet took ${Date.now() - startTime}ms to process`);
-					client.emit("debug", `ready with ${self.servers.length} servers, ${self.channels.length} channels and ${self.users.length} users cached.`);
+					client.emit("debug", `ready with ${self.servers.length} servers, ${self.unavailableServers.length} unavailable servers, ${self.channels.length} channels and ${self.users.length} users cached.`);
 
-					self.readyTime = Date.now();
+					self.restartServerCreateTimeout();
 
-					if (self.client.options.forceFetchUsers) {
-						self.forceFetchUsers().then(() => {client.emit("ready")});
-					} else {
-						client.emit("ready");
-					}
 					break;
 
 				case PacketType.MESSAGE_CREATE:
@@ -1217,7 +1497,7 @@ export default class InternalClient {
 						if (msg) {
 							channel.messages.remove(msg);
 						} else {
-							client.emit("warn", "message was deleted but message is not cached");
+							client.emit("debug", "message was deleted but message is not cached");
 						}
 					} else {
 						client.emit("warn", "message was deleted but channel is not cached");
@@ -1253,11 +1533,20 @@ export default class InternalClient {
 					var server = self.servers.get("id", data.id);
 					if (!server) {
 						if (!data.unavailable) {
-							server = new Server(data, client)
-							self.servers.add(server);
-							client.emit("serverCreated", server);
+							server = self.servers.add(new Server(data, client));
+							if(client.readyTime) {
+								client.emit("serverCreated", server);
+							}
+							if (self.client.options.forceFetchUsers && server.large && server.members.length < server.memberCount) {
+								self.getGuildMembers(server.id, Math.ceil(server.memberCount / 1000));
+							}
+							var unavailable = self.unavailableServers.get("id", server.id);
+							if(unavailable) {
+								self.unavailableServers.remove(unavailable);
+							}
+							self.restartServerCreateTimeout();
 						} else {
-							client.emit("warn", "server was unavailable, could not create");
+							client.emit("debug", "server was unavailable, could not create");
 						}
 					}
 					break;
@@ -1274,12 +1563,19 @@ export default class InternalClient {
 							self.servers.remove(server);
 
 							for (var user of server.members) {
-								if (!self.servers.find((s) => !!s.members.get("id", user.id))) {
+								var found = false;
+								for (var s of self.servers) {
+									if (s.members.get("id", user.id)) {
+										found = true;
+										break;
+									}
+								}
+								if (!found) {
 									self.users.remove(user);
 								}
 							}
 						} else {
-							client.emit("warn", "server was unavailable, could not update");
+							client.emit("debug", "server was unavailable, could not update");
 						}
 					} else {
 						client.emit("warn", "server was deleted but it was not in the cache");
@@ -1335,13 +1631,16 @@ export default class InternalClient {
 
 					break;
 				case PacketType.CHANNEL_DELETE:
-					var channel = self.channels.get("id", data.id);
+					var channel = self.channels.get("id", data.id) || self.private_channels.get("id", data.id);
 					if (channel) {
 
-						if (channel.server) // accounts for PMs
+						if (channel.server) { // accounts for PMs
 							channel.server.channels.remove(channel);
+							self.channels.remove(channel);
+						} else {
+							self.private_channels.remove(channel);
+						}
 
-						self.channels.remove(channel);
 						client.emit("channelDeleted", channel);
 
 					} else {
@@ -1367,6 +1666,7 @@ export default class InternalClient {
 									self.channels.update(channel, chan);
 								} else {
 									//VOICE CHANNEL
+									data.members = channel.members;
 									var chan = new VoiceChannel(data, client, channel.server);
 									client.emit("channelUpdated", channel, chan);
 									channel.server.channels.update(channel, chan);
@@ -1452,7 +1752,14 @@ export default class InternalClient {
 							server.memberMap[data.user.id] = null;
 							server.members.remove(user);
 							server.memberCount--;
-							if (!self.servers.find((s) => !!s.members.get("id", user.id))) {
+							var found = false;
+							for (var s of self.servers) {
+								if (s.members.get("id", user.id)) {
+									found = true;
+									break;
+								}
+							}
+							if (!found) {
 								self.users.remove(user);
 							}
 						} else {
@@ -1581,6 +1888,7 @@ export default class InternalClient {
 				case PacketType.VOICE_STATE_UPDATE:
 					var user = self.users.get("id", data.user_id);
 					var server = self.servers.get("id", data.guild_id);
+					var connection = self.voiceConnections.get("server", server);
 
 					if (user && server) {
 
@@ -1601,6 +1909,16 @@ export default class InternalClient {
 						client.emit("warn", "voice state update but user or server not in cache");
 					}
 
+					if (user && user.id === self.user.id) { // only for detecting self user movements for connections.
+						var connection = self.voiceConnections.get("server", server);
+						// existing connection, perhaps channel moved
+						if (connection && connection.voiceChannel.id !== data.channel_id) {
+							// moved, update info
+							connection.voiceChannel = self.channels.get("id", data.channel_id);
+							client.emit("voiceMoved", connection.voiceChannel); // Moved to a new channel
+						}
+					}
+
 					break;
 				case PacketType.SERVER_MEMBERS_CHUNK:
 
@@ -1608,7 +1926,7 @@ export default class InternalClient {
 
 					if (server) {
 
-						var testtime = new Date().getTime();
+						var testtime = Date.now();
 
 						for (var user of data.members) {
 							server.memberMap[user.user.id] = {
@@ -1622,23 +1940,74 @@ export default class InternalClient {
 							server.members.add(self.users.add(new User(user.user, client)));
 						}
 
-						if (self.chunkloaderCallback && server.id in self.chunkloaderCount) {
-							self.chunkloaderCount[server.id]--;
-							if (self.chunkloaderCount[server.id] <= 0) {
-								delete self.chunkloaderCount[server.id];
-								if (Object.keys(self.chunkloaderCount).length == 0) {
-									self.chunkloaderCallback();
-									self.chunkloaderCallback = null;
-								}
+						if(self.forceFetchCount.hasOwnProperty(server.id)) {
+							if(self.forceFetchCount[server.id] <= 1) {
+								delete self.forceFetchCount[server.id];
+								self.checkReady();
+							} else {
+								self.forceFetchCount[server.id]--;
 							}
 						}
 
-						client.emit("debug", (new Date().getTime() - testtime) + "ms for " + data.members.length + " user chunk for server with id " + server.id);
+						client.emit("debug", (Date.now() - testtime) + "ms for " + data.members.length + " user chunk for server with id " + server.id);
 
 					} else {
 						client.emit("warn", "chunk update received but server not in cache");
 					}
 
+					break;
+				case PacketType.FRIEND_ADD:
+					if (data.type === 1) { // accepted/got accepted a friend request
+						var inUser = self.incoming_friend_requests.get("id", data.id);
+						if (inUser) {
+							// client accepted another user
+							self.incoming_friend_requests.remove(self.friends.add(new User(data.user, client)));
+							return;
+						}
+
+						var outUser = self.outgoing_friend_requests.get("id", data.id);
+						if (outUser) {
+							// another user accepted the client
+							self.outgoing_friend_requests.remove(self.friends.add(new User(data.user, client)));
+							client.emit("friendRequestAccepted", outUser);
+							return;
+						}
+					} else if (data.type === 2) {
+						// client received block
+						self.blocked_users.add(new User(data.user, client));
+					} else if (data.type === 3) {
+						// client received friend request
+						client.emit("friendRequestReceived", self.incoming_friend_requests.add(new User(data.user, client)));
+					} else if (data.type === 4) {
+						// client sent friend request
+						self.outgoing_friend_requests.add(new User(data.user, client));
+					}
+					break;
+				case PacketType.FRIEND_REMOVE:
+					var user = self.friends.get("id", data.id);
+					if (user) {
+						self.friends.remove(user);
+						client.emit("friendRemoved", user);
+						return;
+					}
+
+					user = self.blocked_users.get("id", data.id);
+					if (user) { // they rejected friend request
+						self.blocked_users.remove(user);
+						return;
+					}
+
+					user = self.incoming_friend_requests.get("id", data.id);
+					if (user) { // they rejected friend request
+						client.emit("friendRequestRejected", self.outgoing_friend_requests.remove(user));
+						return;
+					}
+
+					user = self.outgoing_friend_requests.get("id", data.id);
+					if (user) {// client cancelled friend request
+						self.incoming_friend_requests.remove(user);
+						return;
+					}
 					break;
 				default:
 					client.emit("unknown", packet);

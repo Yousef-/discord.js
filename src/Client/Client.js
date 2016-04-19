@@ -116,8 +116,58 @@ export default class Client extends EventEmitter {
 	}
 
 	/**
-	 * The active voice connection of the Client, or null if not applicable. Only available after `ready` event has been emitted.
-	 * @type {VoiceConnection|null} the voice connection (if any).
+	 * The friends that the Client is aware of. Only available after `ready` event has been emitted.
+	 * @type {Cache<User>|null} a Cache of friend Users (or null if bot account)
+	 * @readonly
+	 * @example
+	 * // log names of the friends that the client is aware of
+	 * for(var user of client.friends){
+	 *     console.log(user.username);
+	 * }
+	 */
+	get friends() {
+		return this.internal.friends;
+	}
+
+	/**
+	 * The incoming friend requests that the Client is aware of. Only available after `ready` event has been emitted.
+	 * @type {Cache<User>|null} a Cache of incoming friend request Users (or null if bot account)
+	 * @readonly
+	 * @example
+	 * // log names of the incoming friend requests that the client is aware of
+	 * for(var user of client.incomingFriendRequests){
+	 *     console.log(user.username);
+	 * }
+	 */
+	get incomingFriendRequests() {
+		return this.internal.incoming_friend_requests;
+	}
+
+	/**
+	 * The outgoing friend requests that the Client is aware of. Only available after `ready` event has been emitted.
+	 * @type {Cache<User>} a Cache of outgoing friend request Users
+	 * @readonly
+	 * @example
+	 * // log names of the outgoing friend requests that the client is aware of
+	 * for(var user of client.outgoingFriendRequests){
+	 *     console.log(user.username);
+	 * }
+	 */
+	get outgoingFriendRequests() {
+		return this.internal.outgoing_friend_requests;
+	}
+
+	/**
+	 * A cache of active voice connection of the Client, or null if not applicable. Only available after `ready` event has been emitted.
+	 * @type {Cache<VoiceConnection>} a Cache of Voice Connections
+	 */
+	get voiceConnections() {
+		return this.internal.voiceConnections;
+	}
+
+	/**
+	 * The first voice connection the bot has connected to. Available for backwards compatibility.
+	 * @type {VoiceConnection} first voice connection
 	 */
 	get voiceConnection() {
 		return this.internal.voiceConnection;
@@ -313,6 +363,11 @@ export default class Client extends EventEmitter {
 			// options is the callback
 			callback = options;
 			options = {};
+		}
+		if (typeof content === "object" && content.file) {
+			// content has file
+			options = content;
+			content = "";
 		}
 
 		return this.internal.sendMessage(destination, content, options)
@@ -581,14 +636,19 @@ export default class Client extends EventEmitter {
 	 *     .then(msg => console.log("sent file!"))
 	 *     .catch(err => console.log("couldn't send file!"));
 	 */
-	sendFile(destination, attachment, name, callback = (/*err, m*/) => { }) {
+	sendFile(destination, attachment, name, content, callback = (/*err, m*/) => { }) {
+		if (typeof content === "function") {
+			// content is the callback
+			callback = content;
+			content = undefined; // Will get resolved into original filename in internal
+		}
 		if (typeof name === "function") {
 			// name is the callback
 			callback = name;
 			name = undefined; // Will get resolved into original filename in internal
 		}
 
-		return this.internal.sendFile(destination, attachment, name)
+		return this.internal.sendFile(destination, attachment, name, content)
 			.then(dataCallback(callback), errorCallback(callback));
 	}
 
@@ -651,14 +711,19 @@ export default class Client extends EventEmitter {
 	}
 
 	// def updateServer
-	updateServer(server, name, region, callback = (/*err, srv*/) => { }) {
+	updateServer(server, options, region, callback = (/*err, srv*/) => { }) {
 		if (typeof region === "function") {
 			// region is the callback
 			callback = region;
 			region = undefined;
+		} else if (region && typeof options === "string") {
+			options = {
+				name: options,
+				region: region
+			};
 		}
 
-		return this.internal.updateServer(server, name, region)
+		return this.internal.updateServer(server, options)
 			.then(dataCallback(callback), errorCallback(callback));
 	}
 
@@ -719,6 +784,30 @@ export default class Client extends EventEmitter {
 	moveMember(user, channel, callback = (/*err, {}*/) => { }) {
 		return this.internal.moveMember(user, channel)
 			.then(dataCallback(callback), errorCallback(callback));
+	}
+
+	// def muteMember
+	muteMember(user, server, callback = (/*err, {}*/) => { }) {
+		return this.internal.muteMember(user, server)
+		.then(dataCallback(callback), errorCallback(callback));
+	}
+
+	// def unmuteMember
+	unmuteMember(user, server, callback = (/*err, {}*/) => { }) {
+		return this.internal.unmuteMember(user, server)
+		.then(dataCallback(callback), errorCallback(callback));
+	}
+
+	// def deafenMember
+	deafenMember(user, server, callback = (/*err, {}*/) => { }) {
+		return this.internal.deafenMember(user, server)
+		.then(dataCallback(callback), errorCallback(callback));
+	}
+
+	// def undeafenMember
+	undeafenMember(user, server, callback = (/*err, {}*/) => { }) {
+		return this.internal.undeafenMember(user, server)
+		.then(dataCallback(callback), errorCallback(callback));
 	}
 
 	// def createRole
@@ -907,8 +996,20 @@ export default class Client extends EventEmitter {
 	}
 
 	// def leaveVoiceChannel
-	leaveVoiceChannel(callback = (/*err, {}*/) => { }) {
-		return this.internal.leaveVoiceChannel()
+	leaveVoiceChannel(chann, callback = (/*err, {}*/) => { }) {
+		return this.internal.leaveVoiceChannel(chann)
+			.then(dataCallback(callback), errorCallback(callback));
+	}
+
+	// def addFriend
+	addFriend(user, callback = (/*err, {}*/) => {}) {
+		return this.internal.addFriend(user)
+			.then(dataCallback(callback), errorCallback(callback));
+	}
+
+	// def removeFriend
+	removeFriend(user, callback = (/*err, {}*/) => {}) {
+		return this.internal.removeFriend(user)
 			.then(dataCallback(callback), errorCallback(callback));
 	}
 
