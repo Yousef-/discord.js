@@ -42,7 +42,7 @@ bot.on("message", msg => {
 		.get("https://api.github.com/search/repositories?q=discord.js")
 		.end((err, res) => {
 			if (err) {
-			    msg.reply("failed!");
+				return;
 			}
 			
 			var text = res.body.items[0].stargazers_count

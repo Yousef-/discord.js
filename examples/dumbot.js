@@ -1,9 +1,4 @@
-﻿/*
-    TODO: comment on the start of the code
-
-    TODO: remake the bot to be more OOP
-*/
-
+﻿
 //setting stuff (dont mess with it)
 {
     var Discord = require("../");
@@ -90,7 +85,7 @@ bot.on("message", function (msg) {
 
 bot.login(AuthDetails.email, AuthDetails.password);
 
-command(msg, code)
+function command(msg, code)
 {
 
     //var setting for the filter
