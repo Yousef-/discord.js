@@ -44,6 +44,22 @@
         }
     }
 
+    //twitch
+    function twitch(bot,msg,suffix){
+        require("request")("https://api.twitch.tv/kraken/streams/"+suffix,
+        function(err,res,body){
+            var stream = JSON.parse(body);
+            if(stream.stream){
+                bot.sendMessage(msg.channel, suffix
+                    +" is online, playing "
+                    +stream.stream.game
+                    +"\n"+stream.stream.channel.status
+                    +"\n"+stream.stream.preview.large)
+            }else{
+                bot.sendMessage(msg.channel, suffix+" is offline")
+            }
+        });
+    }
 }
 
 var counter = 0;
@@ -114,10 +130,7 @@ function command(msg, code) {
     //testing
     if (code == 1) {
         {
-            if (message.includes("!twitch") == true) {
-                //bot.sendMessage(msg.channel,twitch(bot, msg, msg.content.substring(7)));
-
-            }
+            
 
 
 
@@ -260,29 +273,9 @@ function command(msg, code) {
 
     //twitch links
     {
-        if (message.includes("!arcadea") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/arcadealive");
-        }
-        if (message.includes("!mat") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/matthewmcmuscles");
-        }
-        if (message.includes("!bestfriends") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/superbestfriendsplay");
-        }
-        if (message.includes("!karp") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/usefulmagikarp");
-        }
-        if (message.includes("!dood") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/maximilian_dood");
-        }
-        if (message.includes("!trihard") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/trihex");
-        }
-        if (message.includes("!cirno") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/cirno_tv");
-        }
-        if (message.includes("!gc") == true) {
-            bot.sendMessage(msg.channel, "https://www.twitch.tv/gcpositive");
+        if (message.includes("!twitch") == true) {
+            bot.sendMessage(msg.channel, twitch(bot, msg, msg.content.substring(8)));
+
         }
     }
 
