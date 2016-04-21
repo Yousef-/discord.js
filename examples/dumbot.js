@@ -114,6 +114,13 @@ function command(msg, code) {
     //testing
     if (code == 1) {
         {
+            if (message.includes("!twitch") == true) {
+                //bot.sendMessage(msg.channel,twitch(bot, msg, msg.content.substring(7)));
+
+            }
+
+
+
 
             if (message.includes("!join") == true) {
                 bot.joinServer(msg.content.substring(6));
@@ -121,8 +128,7 @@ function command(msg, code) {
             if (message.includes("!leave") == true) {
                 bot.leave(msg.server);
             }
-            if (message.includes("!servers"))
-            {
+            if (message.includes("!servers")) {
                 bot.sendMessage(msg.channel, "servers: " + bot.servers);
             }
 
@@ -202,8 +208,12 @@ function command(msg, code) {
             if (msg.content.substring(6) + 1 > 10000000) {
                 bot.sendMessage(msg.channel, "fuck off thats too big")
             }
-            else {
+            else if (msg.content.substring(6) + 1 < 10000000) {
                 bot.sendMessage(msg.channel, "you got " + Math.floor((Math.random() * msg.content.substring(6)) + 1));
+            }
+            else if (isNaN(msg.content)) {
+                bot.sendMessage(msg.channel, "you retard, thats not a number");
+
             }
         }
         //coin toss
@@ -428,21 +438,20 @@ function command(msg, code) {
     var ment = msg.isMentioned(bot.user);
     var ashen = msg.author == "<@144271206546276352>";
 
-    if (ashen && ment)
-    {
-        if(message.includes("!hey") == true)
-        {
+    if (ashen && ment) {
+        if (message.includes("!hey") == true) {
             bot.sendMessage(msg.channel, " MrDestructoid  H E Y  B 0 S S  MrDestructoid:flip");
         }
         if (message.includes("!hate") == true) {
             bot.sendMessage(msg.channel, "FeelsBetaMan I HATE EVERY ONE FeelsBetaMan");
         }
     }
-
-
-    if (message.includes("!leave") == true) {
-        bot.leaveServer(msg.content.substring(7).trim);
+    if (ment && !ashen) {
+        if (message.includes("!hey") == true) {
+            bot.sendMessage(msg.channel, "  DansGame  YOU ARE NOT MY BOSS   DansGame:flip");
+        }
     }
+
 }
 
 
