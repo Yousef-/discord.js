@@ -1,5 +1,4 @@
-﻿
-//setting stuff (dont mess with it)
+﻿//setting stuff (dont mess with it)
 {
     var Discord = require("../");
     // Get the email and password
@@ -9,60 +8,218 @@
     fs = require('fs');
 }
 
+//global variables
+{
+    var counter = 0;
+    var d = new Date(); //date: time = current time
+    var time = d.toString();
+}
 
 //actual fuctions :P
 {
-    //date: time = current time
-    {
-        var d = new Date();
-        var time = d.toString();
-    }
-
     //wait func wait(ms)
-    {
-        function wait(ms) {
-            var d = new Date();
-            var d2 = null;
-            do { d2 = new Date(); }
-            while (d2 - d < ms);
-        }
+    function wait(ms) {
+        var d = new Date();
+        var d2 = null;
+        do { d2 = new Date(); }
+        while (d2 - d < ms);
     }
 
     //check in arrays
-    {
-        function isInArray(value, array) {
-            return array.indexOf(value) > -1;
-        }
+    function isInArray(value, array) {
+        return array.indexOf(value) > -1;
     }
 
     //clean
-    {
-        function clean(msg, limit) {
-            var myMsgs = msg.channel.messages.getAll("author", bot.user);
-            for (var i = 0, len = myMsgs.length - limit; i < len; i++)
-                bot.deleteMessage(myMsgs[i]);
-        }
+    function clean(msg, limit) {
+        var myMsgs = msg.channel.messages.getAll("author", bot.user);
+        for (var i = 0, len = myMsgs.length - limit; i < len; i++)
+            bot.deleteMessage(myMsgs[i]);
     }
 
     //twitch
-    function twitch(bot,msg,suffix){
-        require("request")("https://api.twitch.tv/kraken/streams/"+suffix,
-        function(err,res,body){
+    function twitch(bot, msg, suffix) {
+        require("request")("https://api.twitch.tv/kraken/streams/" + suffix,
+        function (err, res, body) {
             var stream = JSON.parse(body);
-            if(stream.stream){
+            if (stream.stream) {
                 bot.sendMessage(msg.channel, suffix
-                    +" is online, playing "
-                    +stream.stream.game
-                    +"\n"+stream.stream.channel.status
-                    +"\n"+stream.stream.preview.large)
-            }else{
-                bot.sendMessage(msg.channel, suffix+" is offline")
+                    + " is online, playing "
+                    + stream.stream.game
+                    + "\n" + stream.stream.channel.status
+                    + "\n" + stream.stream.channel.url)
+            } else {
+                bot.sendMessage(msg.channel, suffix + " is offline")
             }
         });
     }
-}
 
-var counter = 0;
+    //image edit
+    function edit(msg, meme) {
+        var tags = msg.content.split('"');
+        //bot.sendMessage(msg.channel,"tag 1:(" + tags[1]+") tag3:(" + tags[3] +")");
+        var Imgflipper = require("imgflipper");
+        var imgflipper = new Imgflipper(AuthDetails.imgflip_username, AuthDetails.imgflip_password);
+        imgflipper.generateMeme(meme, tags[1] ? tags[1] : "", tags[3] ? tags[3] : "", function (err, image) {
+
+            bot.sendMessage(msg.channel, image);
+        });
+    }
+
+    //type can be "text" or "pic" or "gif"
+    function action(msg, trigger, type, reply) {
+
+        var message = filter(msg);
+        if (typeof message === "string")
+            message = message.trim();
+
+        if (message == trigger) {
+
+            if (type == "text")
+                bot.sendMessage(msg.channel, reply);
+            else if (type == "pic")
+                bot.sendFile(msg.channel, reply, "pic.png");
+            else if (type == "gif")
+                bot.sendFile(msg.channel, reply, "pic.gif");
+            else if (type == "clean") {
+                clean(msg, 0);
+                counter = 0;
+            }
+            else if (type == "join") {
+                bot.joinServer(msg.content.substring(6));
+                counter = 0;
+            }
+            else if (type == "twitch") {
+                bot.sendMessage(msg.channel, twitch(bot, msg, msg.content.substring(8)));
+            }
+            else if (type == "disconnect") {
+                //alert the console
+                console.log("Disconnected!");
+                //exit node.js with an error
+                process.exit(1);
+            }
+            else if (type == "edit") {
+                edit(msg, reply);
+            }
+
+            counter++;
+            if (counter == 10) //to prevent spam
+            {
+                clean(msg, 1);
+                counter = 0;
+            }
+        }
+    }
+
+    //the word filter
+    function filter(msg) {
+        //the filter
+        {
+            var commandFinder = new RegExp("!\\w+|!\\s");
+            var message = msg.content.toLowerCase(); // use "message" for reading, use "msg" for writing
+            var a = commandFinder.exec(message);
+            if (a !== null)
+                return message = " " + a + " ";
+            //var command = message.cleanContent.match(commandFinder)[0].substring(1);
+        }
+
+    }
+
+    //commands
+    function command(msg, code) {
+        var message = filter(msg);
+        //testing
+        if (code == 1) {
+            action(msg, "!disco", "disconnect", "disco");
+            action(msg, "!join", "join", "join")
+            action(msg, "!server", "text", "servers: " + bot.servers);//prints all servers
+            z = 0;
+            action(msg, "!channels", "text", bot.servers[z].channels[0] + " 0" + bot.servers[z].channels[1] + " 1"
+                + bot.servers[z].channels[2] + " 2" + bot.servers[z].channels[3] + " 3" + bot.servers[z].channels[4] + " 4"
+                + bot.servers[z].channels[5] + " 5" + bot.servers[z].channels[6] + " 6" + bot.servers[z].channels[7] + " 7"); //prints seven channels of a server
+            action(msg, "!test1", "text", msg.server); //whats the server name
+            action(msg, "!time", "text", time); //whats the time
+
+        }
+        //boku no only
+        if (code == 2) {
+            action(msg, "!cutie", "pic", "C:/Users/Yousef/Google Drive/botfiles/!cutie.png");
+            action(msg, "!boku", "pic", "C:/Users/Yousef/Google Drive/botfiles/!boku.png");
+            action(msg, "rawr", "text", "VoHiYo how are you");
+            action(msg, "!familiarfaces", "pic", "C:/Users/Yousef/Google Drive/botfiles/!familiarfaces.png");
+        }
+        //nochill only
+        if (code == 4) {
+            action(msg, "!peeves", "pic", "C:/Users/Yousef/Google Drive/botfiles/peeves/peeves" + Math.floor((Math.random() * 7) + 1) + ".png");
+            action(msg, "!yumi", "pic", "C:/Users/Yousef/Google Drive/botfiles/!yumi.png");
+            action(msg, "!ftm", "text", " SwiftRage **#FuckTheMods2016**  SwiftRage:flip");
+        }
+        //global
+        {
+            action(msg, "!todd", "edit", 65829746);
+            action(msg, "!goodluck", "text", "https://www.youtube.com/watch?v=gjVmeKWOsEU");
+            action(msg, "!nuclear", "text", "https://www.youtube.com/watch?v=gn7AKFy3h94");
+            action(msg, "!shinyteeth", "text", "http://hestia.dance/");
+            action(msg, "!lolidance", "text", "http://loli.dance/");
+            action(msg, "!finalmix", "text", "https://www.youtube.com/watch?v=NpYqFJxVuBc");
+            action(msg, "!ocelot", "text", "https://www.youtube.com/watch?v=kCcfhCvoEfI");
+            action(msg, "!todduhira", "text", "https://www.youtube.com/watch?v=yvGXCisAaR4");
+            action(msg, "!hentai", "text", "VoHiYo http://nhentai.net/g/" + Math.floor((Math.random() * 161915) + 1) + "/");
+            action(msg, "!twitch", "twitch", "twitch");
+            action(msg, "!completelyerect", "pic", "C:/Users/Yousef/Google Drive/botfiles/erect.png");
+            action(msg, "!smug", "pic", "C:/Users/Yousef/Google Drive/botfiles/smug/smug" + Math.floor((Math.random() * 48) + 1) + ".png");
+            action(msg, "!mmg", "pic", "G:/pics/lewdss/mech porn/mechs-monster-girl (" + Math.floor((Math.random() * 127) + 1) + ").jpg");
+            action(msg, "!pleasure", "pic", "C:/Users/Yousef/Google Drive/botfiles/!pleasure.jpg");
+            action(msg, "!waitwhat", "pic", "C:/Users/Yousef/Google Drive/botfiles/wait what.PNG");
+            action(msg, "!faggot", "pic", "C:/Users/Yousef/Google Drive/botfiles/faggot.PNG");
+            action(msg, "!objection", "pic", "C:/Users/Yousef/Google Drive/botfiles/objection.png");
+            action(msg, "!prettygood", "pic", "C:/Users/Yousef/Google Drive/botfiles/prettygood.gif");
+            action(msg, "!ora", "pic", "C:/Users/Yousef/Google Drive/botfiles/!ora.jpg");
+            action(msg, "!stop", "pic", "C:/Users/Yousef/Google Drive/botfiles/!stop.png");
+            action(msg, "!bruh", "pic", "C:/Users/Yousef/Google Drive/botfiles/bruh.png");
+            action(msg, "!seriously", "pic", "C:/Users/Yousef/Google Drive/botfiles/seriously.gif");
+            action(msg, "!ok", "pic", "C:/Users/Yousef/Google Drive/botfiles/ok.jpg");
+            action(msg, "!anime", "pic", "C:/Users/Yousef/Google Drive/botfiles/anime.jpg");
+            action(msg, "!fine", "pic", "C:/Users/Yousef/Google Drive/botfiles/this is fine.jpg");
+            action(msg, "!notlying", "pic", "C:/Users/Yousef/Google Drive/botfiles/totally not lying.jpg");
+            action(msg, "!undertale", "pic", "C:/Users/Yousef/Google Drive/botfiles/undertale.jpg");
+            action(msg, "!fite", "pic", "C:/Users/Yousef/Google Drive/botfiles/fite.jpg");
+            action(msg, "!boner", "pic", "C:/Users/Yousef/Google Drive/botfiles/boner.gif");
+            action(msg, "!rekt", "pic", "C:/Users/Yousef/Google Drive/botfiles/rekt.gif");
+            action(msg, "!muda", "pic", "C:/Users/Yousef/Google Drive/botfiles/roller.gif");
+            action(msg, "!wrong", "pic", "C:/Users/Yousef/Google Drive/botfiles/wrong.jpg");
+            action(msg, "!bullshit", "pic", "C:/Users/Yousef/Google Drive/botfiles/bullshit.jpg");
+            action(msg, "!notlikethis", "pic", "C:/Users/Yousef/Google Drive/botfiles/notlikethis.png");
+            action(msg, "!stfu", "pic", "C:/Users/Yousef/Google Drive/botfiles/stfu.png");
+            action(msg, "!moe", "pic", "C:/Users/Yousef/Google Drive/botfiles/MOE.jpg");
+            action(msg, "!ragecancel", "pic", "C:/Users/Yousef/Google Drive/botfiles/ragecancel.gif");
+            action(msg, "!lewd", "pic", "C:/Users/Yousef/Google Drive/botfiles/lewd/lewd" + Math.floor((Math.random() * 5) + 1) + ".png");
+            action(msg, "!spoopy", "pic", "C:/Users/Yousef/Google Drive/botfiles/spooky/spook" + Math.floor((Math.random() * 5) + 1) + ".gif");
+            action(msg, "!cute", "pic", "C:/Users/Yousef/Google Drive/botfiles/cute/cute" + Math.floor((Math.random() * 3) + 1) + ".png");
+            action(msg, "!gitgud", "pic", "C:/Users/Yousef/Google Drive/botfiles/gitgud/gitgud" + Math.floor((Math.random() * 9) + 1) + ".png");
+            action(msg, "!dio", "pic", "C:/Users/Yousef/Google Drive/botfiles/dio.jpg");
+            action(msg, "!pleasure", "pic", "C:/Users/Yousef/Google Drive/botfiles/!pleasure.jpg");
+            action(msg, "!erected", "pic", "C:/Users/Yousef/Google Drive/botfiles/!erected.jpg");
+            action(msg, "!feelsgood", "pic", "C:/Users/Yousef/Google Drive/botfiles/!feelsgood.jpg");
+            action(msg, "!hard", "pic", "C:/Users/Yousef/Google Drive/botfiles/!hard.png");
+            action(msg, "!jackass", "pic", "C:/Users/Yousef/Google Drive/botfiles/!jackass.png");
+            action(msg, "!nope", "pic", "C:/Users/Yousef/Google Drive/botfiles/!no.png");
+            action(msg, "!sigh", "pic", "C:/Users/Yousef/Google Drive/botfiles/!sigh.png");
+            action(msg, "!ys", "pic", "C:/Users/Yousef/Google Drive/botfiles/!ys.jpg");
+            action(msg, "!asahi", "pic", "C:/Users/Yousef/Google Drive/botfiles/!asahi.jpg");
+            action(msg, "!awoof", "pic", "C:/Users/Yousef/Google Drive/botfiles/!awoof.jpg");
+            action(msg, "!lucifer", "pic", "C:/Users/Yousef/Google Drive/botfiles/!lucifer.png");
+            action(msg, "!discomfort", "pic", "C:/Users/Yousef/Google Drive/botfiles/!discomfort.png");
+            action(msg, "!merkabah", "pic", "C:/Users/Yousef/Google Drive/botfiles/!merkabah.png");
+            action(msg, "!elienokiseki", "pic", "C:/Users/Yousef/Google Drive/botfiles/!elienokiseki.jpg");
+            action(msg, "!camplaslow", "pic", "C:/Users/Yousef/Google Drive/botfiles/camplaslow.png");
+            action(msg, "!trailsintheshill", "pic", "C:/Users/Yousef/Google Drive/botfiles/!trailsintheshill.png");
+            action(msg, "!short", "pic", "C:/Users/Yousef/Google Drive/botfiles/!short.jpg");
+        }
+        //clean
+        action(msg, "!clean", "clean", "clean")
+    }
+}
 
 //when the bot is ready
 bot.on("ready", function () {
@@ -76,21 +233,14 @@ bot.on("ready", function () {
 bot.on("disconnected", function () {
     //alert the console
     console.log("Disconnected!");
-
     //exit node.js with an error
     process.exit(1);
 });
-
 
 //when the bot receives a message
 bot.on("message", function (msg) {
     if (msg != null) {
         if (msg.author == bot.user) {
-            counter = (counter + 1);
-            if (counter == 3) {
-                clean(msg, 1);
-                counter = 0;
-            }
         }
         else {
             //sever specific commands
@@ -107,353 +257,9 @@ bot.on("message", function (msg) {
                     if (serv == "Hype Nig (No Space)" && msg.channel == bot.channels[3]) //nochill only
                         command(msg, 4);
                 }
-
             }
         }
     }
 });
 
 bot.login(AuthDetails.email, AuthDetails.password);
-
-function command(msg, code) {
-
-    //var setting for the filter
-    {
-        var commandFinder = new RegExp("!\\w+|!\\S");
-        var message = msg.content.toLowerCase(); // use "message" for reading, use "msg" for writing
-        var a = commandFinder.exec(message);
-        if (a !== null)
-            message = " " + a;
-        //var command = message.cleanContent.match(commandFinder)[0].substring(1);
-    }
-
-    //testing
-    if (code == 1) {
-        {
-            
-
-
-
-
-            if (message.includes("!join") == true) {
-                bot.joinServer(msg.content.substring(6));
-            }
-            if (message.includes("!leave") == true) {
-                bot.leave(msg.server);
-            }
-            if (message.includes("!servers")) {
-                bot.sendMessage(msg.channel, "servers: " + bot.servers);
-            }
-
-            z = 0;
-            if (message.includes("!channels") == true) {
-                bot.sendMessage(msg.channel, bot.servers[z].channels[0] + " 0");
-                bot.sendMessage(msg.channel, bot.servers[z].channels[1] + " 1");
-                bot.sendMessage(msg.channel, bot.servers[z].channels[2] + " 2");
-                bot.sendMessage(msg.channel, bot.servers[z].channels[3] + " 3");
-                bot.sendMessage(msg.channel, bot.servers[z].channels[4] + " 4");
-                bot.sendMessage(msg.channel, bot.servers[z].channels[5] + " 5");
-                bot.sendMessage(msg.channel, bot.servers[z].channels[6] + " 6");
-                bot.sendMessage(msg.channel, bot.servers[z].channels[7] + " 7");
-            }
-
-            if (message.includes("!test1") == true) {
-                bot.sendMessage(msg.channel, msg.server);
-            }
-
-            if (message.includes("!time") == true) {
-                wait(1000);
-                bot.sendMessage(msg.channel, time);
-            }
-
-        };
-    }
-
-    //boku no only
-    if (code == 2) {
-        if (message.includes("!cutie") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!cutie.png", "!Cutie.png");
-        }
-        if (message.includes("rawr") == true) {
-            wait(3000);
-            bot.sendMessage(msg.channel, "VoHiYo how are you?")
-        }
-        if (message.includes("!members") == true) {
-            bot.sendMessage(msg.channel, "the number of members in this server: " + serv.members.length);
-        }
-        if (message.includes("!erect") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/erect.jpg", "erect.png")
-        }
-        if (message.includes("!familiarfaces") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!familiarfaces.jpg", "!familiarfaces.png");
-        }
-
-    }
-    //nochill only
-    if (code == 4) {
-        if (message.includes("!peeves") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/peeves/peeves" + Math.floor((Math.random() * 7) + 1) + ".png", "!peeves.png");
-        }
-        if (message.includes("!ftm") == true) {
-            bot.sendMessage(msg.channel, " SwiftRage **#FuckTheMods2016**  SwiftRage:flip")
-        }
-    }
-
-    //dm shit
-    {
-        if (message.includes("!hentai") == true) {
-            if (Math.floor((Math.random() * 2) + 1) == 1) {
-                bot.sendMessage(msg.author, "VoHiYo http://www.tsumino.com/Browse/Random");
-            }
-            else {
-                bot.sendMessage(msg.author, "VoHiYo http://nhentai.net/random/");
-            }
-        }
-        if (message.includes("!animu") == true) {
-            bot.sendMessage(msg.author, "VoHiYo http://www.crunchyroll.com/random/anime?random_ref=topbar");
-        }
-    }
-
-    //text
-    {
-        //dice roll
-        if (message.includes("!roll") == true) {
-            if (msg.content.substring(6) + 1 > 10000000) {
-                bot.sendMessage(msg.channel, "fuck off thats too big")
-            }
-            else if (msg.content.substring(6) + 1 < 10000000) {
-                bot.sendMessage(msg.channel, "you got " + Math.floor((Math.random() * msg.content.substring(6)) + 1));
-            }
-            else if (isNaN(msg.content)) {
-                bot.sendMessage(msg.channel, "you retard, thats not a number");
-
-            }
-        }
-        //coin toss
-        if (message.includes("!coin") == true) {
-            wait(500);
-            if (Math.floor((Math.random() * 2) + 1) == 1)
-                bot.sendMessage(msg.channel, "heads");
-            else
-                bot.sendMessage(msg.channel, "tailes");
-        }
-
-    }
-
-    //links
-    {
-        if (message.includes("!goodluck") == true) {
-            bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=gjVmeKWOsEU");
-        }
-        if (message.includes("!sao") == true) {
-            bot.sendMessage(msg.channel, "http://www.hulu.com/sword-art-online");
-        }
-        if (message.includes("!nuclear") == true) {
-            bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=gn7AKFy3h94");
-        }
-        if (message.includes("!shinyteeth") == true) {
-            bot.sendMessage(msg.channel, "http://hestia.dance/");
-        }
-        if (message.includes("!lolidance") == true) {
-            bot.sendMessage(msg.channel, "http://loli.dance/");
-        }
-        if (message.includes("!roxasvssora") == true) {
-            bot.sendMessage(msg.channel, "https://youtu.be/_2e7bX2oVlQ");
-        }
-        if (message.includes("!finalmix") == true) {
-            bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=NpYqFJxVuBc");
-        }
-        if (message.includes("!ocelot") == true) {
-            bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=kCcfhCvoEfI");
-        }
-        if (message.includes("!todduhira") == true) {
-            bot.sendMessage(msg.channel, "https://www.youtube.com/watch?v=yvGXCisAaR4");
-        }
-    }
-
-    //twitch links
-    {
-        if (message.includes("!twitch") == true) {
-            bot.sendMessage(msg.channel, twitch(bot, msg, msg.content.substring(8)));
-
-        }
-    }
-
-    //pics
-    {
-        if (message.includes("!completelyerect") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/erect.jpg", "erect.png")
-        }
-        if (message.includes("!smug") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/smug/smug" + Math.floor((Math.random() * 48) + 1) + ".png", "lewd.png")
-        }
-        if (message.includes("!pleasure") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!pleasure.jpg", "pleasure.png");
-        }
-        if (message.includes("!objection") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/objection.png", "objection.png");
-        }
-        if (message.includes("!prettygood") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/prettygood.gif", "prettygood.gif");
-        }
-        if (message.includes("!ora") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!ora.jpg", "ora.png");
-        }
-        if (message.includes("!stop") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!stop.png", "!stop.png");
-        }
-        if (message.includes("!bruh") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/bruh.png", "bruh.png");
-        }
-        if (message.includes("!seriously") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/seriously.gif", "seriously.gif");
-        }
-        if (message.includes("!ok") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/ok.jpg", "ok.png");
-        }
-        if (message.includes("!anime") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/anime.jpg", "anime.png");
-        }
-        if (message.includes("!thisisfine") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/this is fine.jpg", "fine.png");
-        }
-        if (message.includes("!notlying") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/totally not lying.jpg", "this is a lie.png");
-        }
-        if (message.includes("!undertale") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/undertale.jpg", "undertale.png");
-        }
-        if (message.includes("!fite") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/fite.jpg", "fite.png");
-        }
-        if (message.includes("!boner") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/boner.gif", "boner.gif");
-        }
-        if (message.includes("!rekt") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/rekt.gif", "rekt.gif");
-        }
-        if (message.includes("!muda") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/roller.gif", "roller.gif");
-        }
-        if (message.includes("!wrong") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/wrong.jpg", "wrong.png")
-        }
-        if (message.includes("!bullshit") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/bullshit.jpg", "bullshit.png")
-        }
-        if (message.includes("!notlikethis") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/notlikethis.png", "notlikethis.png")
-        }
-        if (message.includes("!stfu") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/stfu.png", "stfu.png")
-        }
-        if (message.includes("!moe") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/MOE.jpg", "MOE.png")
-        }
-        if (message.includes("!ragecancel") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/ragecancel.gif", "ragecancel.gif")
-        }
-        if (message.includes("!lewd") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/lewd/lewd" + Math.floor((Math.random() * 5) + 1) + ".png", "lewd.png")
-        }
-        if (message.includes("!spoopy") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/spooky/spook" + Math.floor((Math.random() * 5) + 1) + ".gif", "spoopy.gif")
-        }
-        if (message.includes("!cute") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/cute/cute" + Math.floor((Math.random() * 3) + 1) + ".png", "cute.png")
-        }
-        if (message.includes("!gitgud") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/gitgud/gitgud" + Math.floor((Math.random() * 9) + 1) + ".png", "gitgud.png")
-        }
-        if (message.includes("!dio") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/dio.jpg", "dio.png");
-        }
-        if (message.includes("!pleasure") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!pleasure.jpg", "pleasure.png");
-        }
-        if (message.includes("!erected") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!erected.jpg", "!erected.png");
-        }
-        if (message.includes("!feelsgood") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!feelsgood.jpg", "!feelsgood.png");
-        }
-        if (message.includes("!hard") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!hard.png", "!hard.png");
-        }
-        if (message.includes("!jackass") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!jackass.png", "!jackass.png");
-        }
-        if (message.includes("!nope") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!no.png", "!no.png");
-        }
-        if (message.includes("!sigh") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!sigh.png", "!sigh.png");
-        }
-        if (message.includes("!ys") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!ys.jpg", "ys.png");
-        }
-        if (message.includes("!asahi") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!asahi.jpg", "!asahi.png");
-        }
-        if (message.includes("!awoof") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!awoof.jpg", "!awoof.png");
-        }
-        if (message.includes("!lucifer") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!lucifer.png", "!lucifer.png");
-        }
-        if (message.includes("!discomfort") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!discomfort.png", "!discomfort.png");
-        }
-        if (message.includes("!merkabah") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!merkabah.png", "!merkabah.png");
-        }
-        if (message.includes("!elienokiseki") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!elienokiseki.jpg", "elienokiseki.png");
-        }
-        if (message.includes("!camplaslow") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/camplaslow.png", "camplaslow.png");
-        }
-        if (message.includes("!trailsintheshill") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!trailsintheshill.png", "trailsintheshill.png");
-        }
-        if (message.includes("!short") == true) {
-            bot.sendFile(msg.channel, "C:/Users/Yousef/Google Drive/botfiles/!short.jpg", "short.png");
-        }
-
-    }
-
-    //clean
-    if (message.includes("!clean") == true) {
-        clean(msg, 0);
-    }
-
-
-    var ment = msg.isMentioned(bot.user);
-    var ashen = msg.author == "<@144271206546276352>";
-
-    if (ashen && ment) {
-        if (message.includes("!hey") == true) {
-            bot.sendMessage(msg.channel, " MrDestructoid  H E Y  B 0 S S  MrDestructoid:flip");
-        }
-        if (message.includes("!hate") == true) {
-            bot.sendMessage(msg.channel, "FeelsBetaMan I HATE EVERY ONE FeelsBetaMan");
-        }
-    }
-    if (ment && !ashen) {
-        if (message.includes("!hey") == true) {
-            bot.sendMessage(msg.channel, "  DansGame  YOU ARE NOT MY BOSS   DansGame:flip");
-        }
-    }
-
-}
-
-
-
-
-
-bot.login(AuthDetails.email, AuthDetails.password);
-
-
-
-
-
